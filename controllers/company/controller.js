@@ -5,64 +5,92 @@ const { SendMail } = require("../../config/nodeMailer.config");
 const { generateOTP } = require("../../utils/generateOtp");
 
 const createCompany = TryCatch(async (req, res) => {
-  const { companyname, email, website, contactPersonName, phone, gst_no, address, designation, additionalContacts, status, comment } = req.body;
 
-  let isExistingCompany = await companyModel.findOne({ email });
-  if (isExistingCompany) {
-    throw new ErrorHandler(
-      "A corporate with this email id is already registered",
-      409
-    );
+  const {
+    companyname,
+    email,
+    website,
+    contactPersonName,
+    phone,
+    gst_no,
+    address,
+    designation,
+    additionalContacts = [],
+    status,
+    comment,
+  } = req.body;
+
+  // === VALIDATION: Email & Phone Duplicate ===
+  if (email) {
+    const existingByEmail = await companyModel.findOne({ email: email.trim().toLowerCase() });
+    if (existingByEmail) {
+      throw new ErrorHandler("A corporate with this email id is already registered", 409);
+    }
   }
 
-  isExistingCompany = await companyModel.findOne({ phone });
-  if (isExistingCompany) {
-    throw new ErrorHandler(
-      "A corporate with this phone no. is already registered",
-      409
-    );
+  if (phone) {
+    const existingByPhone = await companyModel.findOne({ phone });
+    if (existingByPhone) {
+      throw new ErrorHandler("A corporate with this phone no. is already registered", 409);
+    }
   }
 
-  const formatName = (name = "") =>
-    name.charAt(0).toUpperCase() + name.slice(1).toLowerCase();
+  // === FORMAT NAMES ===
+  const formatName = (name = "") => {
+    if (!name || !name.trim()) return "";
+    return name.trim().charAt(0).toUpperCase() + name.trim().slice(1).toLowerCase();
+  };
 
-  const formattedCompanyName = formatName(companyname.trim());
-  const formattedContactPersonName = formatName(contactPersonName?.trim());
+  const formattedCompanyName = formatName(companyname);
+  const formattedContactPersonName = formatName(contactPersonName);
 
-  // Generate OTP for email verification
+  // === GENERATE OTP ===
   const { otp, expiresAt } = generateOTP();
 
+  // === CLEAN & FORMAT ADDITIONAL CONTACTS ===
+  const cleanedAdditionalContacts = additionalContacts.map(contact => ({
+    name: contact.name?.trim() || "",
+    phone: contact.phone || "",
+    designation: contact.designation?.trim() || "",
+    email: contact.email?.trim().toLowerCase() || "",
+  }));
+
+  // === CREATE COMPANY ===
   const company = await companyModel.create({
     organization: req.user.organization,
     creator: req.user.id,
     companyname: formattedCompanyName,
-    email,
+    email: email?.trim().toLowerCase(),
     contactPersonName: formattedContactPersonName,
     phone,
-    designation,
-    website,
-    gst_no,
-    address,
-    additionalContacts: additionalContacts || [],
-    status,
-    isArchived: status === 'Not Interested',
+    designation: designation?.trim(),
+    website: website?.trim(),
+    gst_no: gst_no?.toUpperCase(),
+    address: address?.trim(),
+    additionalContacts: cleanedAdditionalContacts,
+    status: status || "",
+    isArchived: status === "Not Interested",
     otp,
     expiry: expiresAt,
     verify: false,
-    ...(comment && {
-      comments: [{
-        comment: comment,
-        createdBy: req.user.id,
-      }]
+    // Only add comment if it's not empty
+    ...(comment?.trim() && {
+      comments: [
+        {
+          comment: comment.trim(),
+          createdBy: req.user.id,
+        },
+      ],
     }),
   });
 
-  // Send OTP email if email is provided
+  // === SEND OTP EMAIL ===
   if (email) {
+    const userName = formattedContactPersonName || formattedCompanyName;
     SendMail(
       "OtpVerification.ejs",
-      { userName: formattedContact || formattedCompanyName, otp },
-      { email, subject: "OTP Verification" }
+      { userName, otp },
+      { email: email.trim(), subject: "OTP Verification" }
     );
   }
 
@@ -74,52 +102,98 @@ const createCompany = TryCatch(async (req, res) => {
   });
 });
 
-
 const editCompany = TryCatch(async (req, res) => {
-  const { companyId, companyname, name, email, website, contact, phone, gst_no, address, secondPersonName, secondPersonContact, secondPersonDesignation, status } = req.body;
+  const {
+    companyId,
+    companyname,
+    address,
+    contactPersonName,
+    phone,
+    designation,
+    email,
+    website,
+    gst_no,
+    status,
+    additionalContacts = [],
+    comment,
+  } = req.body;
 
+  // === 1. Find Company ===
   const company = await companyModel.findById(companyId);
-
   if (!company) {
     throw new ErrorHandler("Corporate not found", 404);
   }
 
-  let isExistingCompany = await companyModel.findOne({ email });
-  if (isExistingCompany && company.email !== email) {
-    throw new ErrorHandler(
-      "A corporate with this email id is already registered",
-      409
-    );
-  }
-  isExistingCompany = await companyModel.findOne({ phone });
-  if (isExistingCompany && company.phone !== phone) {
-    throw new ErrorHandler(
-      "A corparate with this phone no. id is already registered",
-      409
-    );
-  }
-
+  // === 2. Permission Check ===
   if (
     req.user.role !== "Super Admin" &&
-    isExistingCompany.creator.toString() !== req.user.id.toString()
+    company.creator.toString() !== req.user.id.toString()
   ) {
-    throw new Error("You are not allowed to edit this corporate", 401);
+    throw new ErrorHandler("You are not allowed to edit this corporate", 401);
   }
 
-  const updatedCompany = await companyModel.findOneAndUpdate(
-    { _id: companyId },
-    { companyname: companyname || name, email, phone, contact, website, gst_no, address, secondPersonName, secondPersonContact, secondPersonDesignation, status, ...(status ? { isArchived: status === 'Not Interested' } : {}) },
+  // === 3. Duplicate Check (only if changed) ===
+  if (email && email.trim().toLowerCase() !== company.email) {
+    const exists = await companyModel.findOne({ email: email.trim().toLowerCase() });
+    if (exists) {
+      throw new ErrorHandler("A corporate with this email id is already registered", 409);
+    }
+  }
+
+  if (phone && phone !== company.phone) {
+    const exists = await companyModel.findOne({ phone });
+    if (exists) {
+      throw new ErrorHandler("A corporate with this phone no. is already registered", 409);
+    }
+  }
+
+  // === 4. Clean Additional Contacts ===
+  const cleanedAdditionalContacts = additionalContacts.map(contact => ({
+    name: contact.name?.trim() || "",
+    phone: contact.phone || "",
+    designation: contact.designation?.trim() || "",
+    email: contact.email?.trim().toLowerCase() || "",
+  }));
+
+  // === 5. Prepare Update Object ===
+  const updates = {
+    companyname: companyname?.trim() || company.companyname,
+    address: address?.trim() || company.address,
+    contactPersonName: contactPersonName?.trim() || company.contactPersonName,
+    phone: phone || company.phone,
+    designation: designation?.trim() || company.designation,
+    email: email?.trim().toLowerCase() || company.email,
+    website: website?.trim() || company.website,
+    gst_no: gst_no?.toUpperCase() || company.gst_no,
+    status: status || company.status,
+    additionalContacts: cleanedAdditionalContacts,
+    isArchived: status === "Not Interested",
+  };
+
+  // === 6. Add Comment if provided ===
+  if (comment?.trim()) {
+    updates.$push = {
+      comments: {
+        comment: comment.trim(),
+        createdBy: req.user.id,
+      },
+    };
+  }
+
+  // === 7. Update in DB ===
+  const updatedCompany = await companyModel.findByIdAndUpdate(
+    companyId,
+    updates,
     { new: true }
-  );
+  ).populate("comments.createdBy", "firstname lastname");
 
   res.status(200).json({
     status: 200,
     success: true,
-    message: "Corporate details has been updated successfully.",
+    message: "Corporate details have been updated successfully.",
     company: updatedCompany,
   });
 });
-
 const deleteCompany = TryCatch(async (req, res) => {
   const { companyId } = req.body;
 
