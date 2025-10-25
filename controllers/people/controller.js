@@ -136,7 +136,7 @@ const deletePeople = TryCatch(async (req, res) => {
 const personDetails = TryCatch(async (req, res) => {
   const { peopleId } = req.body;
 
-  let person = await peopleModel.findById(peopleId);
+  let person = await peopleModel.findById(peopleId).populate("creator", "name");
   // .populate("company", "companyname");
   if (!person) {
     throw new ErrorHandler("Person doesn't exists", 400);
@@ -156,6 +156,10 @@ const personDetails = TryCatch(async (req, res) => {
     email: person.email,
     phone: person.phone,
     status: person.status,
+    verify: person.verify,
+    uniqueId: person.uniqueId,
+    createdAt: person.createdAt,
+    creator: person?.creator?.name || "",
     // company: person?.company ? person.company.companyname : "",
   };
 
