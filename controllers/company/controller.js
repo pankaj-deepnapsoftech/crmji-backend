@@ -5,7 +5,7 @@ const { SendMail } = require("../../config/nodeMailer.config");
 const { generateOTP } = require("../../utils/generateOtp");
 
 const createCompany = TryCatch(async (req, res) => {
-  const { companyname, email, website, contact, phone, gst_no, address, secondPersonName, secondPersonContact, secondPersonDesignation, status } = req.body;
+  const { companyname, email, website, contactPersonName, phone, gst_no, address, designation, additionalContacts, status, comment } = req.body;
 
   let isExistingCompany = await companyModel.findOne({ email });
   if (isExistingCompany) {
@@ -27,7 +27,7 @@ const createCompany = TryCatch(async (req, res) => {
     name.charAt(0).toUpperCase() + name.slice(1).toLowerCase();
 
   const formattedCompanyName = formatName(companyname.trim());
-  const formattedContact = formatName(contact?.trim());
+  const formattedContactPersonName = formatName(contactPersonName?.trim());
 
   // Generate OTP for email verification
   const { otp, expiresAt } = generateOTP();
@@ -37,19 +37,24 @@ const createCompany = TryCatch(async (req, res) => {
     creator: req.user.id,
     companyname: formattedCompanyName,
     email,
-    contact: formattedContact,
+    contactPersonName: formattedContactPersonName,
     phone,
+    designation,
     website,
     gst_no,
     address,
-    secondPersonName,
-    secondPersonContact,
-    secondPersonDesignation,
+    additionalContacts: additionalContacts || [],
     status,
     isArchived: status === 'Not Interested',
     otp,
     expiry: expiresAt,
     verify: false,
+    ...(comment && {
+      comments: [{
+        comment: comment,
+        createdBy: req.user.id,
+      }]
+    }),
   });
 
   // Send OTP email if email is provided
@@ -184,7 +189,7 @@ const CompanyResendOTP = TryCatch(async (req, res) => {
 const companyDetails = TryCatch(async (req, res) => {
   const { companyId } = req.body;
 
-  const company = await companyModel.findById(companyId);
+  const company = await companyModel.findById(companyId).populate('comments.createdBy', 'firstname lastname');
   if (!company) {
     throw new ErrorHandler("Corporate doesn't exists", 400);
   }
@@ -223,6 +228,73 @@ const allCompanies = TryCatch(async (req, res) => {
   });
 });
 
+// Add comment to company
+const addComment = async (req, res) => {
+  try {
+    const { companyId, comment } = req.body;
+    const { _id: userId } = req.user;
+
+    if (!companyId || !comment) {
+      return res.status(400).json({
+        success: false,
+        message: "Company ID and comment are required",
+      });
+    }
+
+    const company = await companyModel.findById(companyId);
+    if (!company) {
+      return res.status(404).json({
+        success: false,
+        message: "Company not found",
+      });
+    }
+
+    // Add comment to the company
+    company.comments.push({
+      comment,
+      createdBy: userId,
+    });
+
+    await company.save();
+
+    res.status(200).json({
+      success: true,
+      message: "Comment added successfully",
+      data: company.comments,
+    });
+  } catch (error) {
+    res.status(500).json({
+      success: false,
+      message: error.message,
+    });
+  }
+};
+
+// Get company comments
+const getComments = async (req, res) => {
+  try {
+    const { companyId } = req.params;
+
+    const company = await companyModel.findById(companyId).populate('comments.createdBy', 'firstname lastname');
+    if (!company) {
+      return res.status(404).json({
+        success: false,
+        message: "Company not found",
+      });
+    }
+
+    res.status(200).json({
+      success: true,
+      data: company.comments,
+    });
+  } catch (error) {
+    res.status(500).json({
+      success: false,
+      message: error.message,
+    });
+  }
+};
+
 module.exports = {
   createCompany,
   editCompany,
@@ -231,4 +303,6 @@ module.exports = {
   allCompanies,
   CompanyOtpVerification,
   CompanyResendOTP,
+  addComment,
+  getComments,
 };

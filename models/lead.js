@@ -22,21 +22,14 @@ const leadSchema = mongoose.Schema(
     status: {
       type: String,
       enum: [
-        "Draft",
-        "New",
+        "Meeting Scheduled",
+        "Meeting Completed",
         "In Negotiation",
-        "Completed",
-        "Loose",
-        "Cancelled",
-        "Assigned",
-        "On Hold",
-        "Follow Up",
-        "Demo",
-        "Demo Preparation",
-        "Scheduled Demo",
-        "Demo Completed",
+        "Deal on Hold",
+        "Deal Won",
+        "Deal Lost",
       ],
-      default: "Draft",
+      default: "Meeting Scheduled",
     },
     source: {
       type: String,
@@ -125,6 +118,21 @@ const leadSchema = mongoose.Schema(
       company_tenure: String,
       kyc_remarks: String,
     },
+    comments: [{
+      comment: {
+        type: String,
+        required: true,
+      },
+      timestamp: {
+        type: Date,
+        default: Date.now,
+      },
+      createdBy: {
+        type: mongoose.Types.ObjectId,
+        ref: "Admin",
+        required: true,
+      },
+    }],
 
   },
 

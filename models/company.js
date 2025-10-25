@@ -25,34 +25,88 @@ const companySchema = mongoose.Schema(
       type: String,
       // required: [true, "email is a required field"],
     },
-    contact: {
+    contactPersonName: {
       type: String,
+      required: [true, "Contact Person Name is required"],
     },
     phone: {
       type: String,
+      required: [true, "Phone number is required"],
+      validate: {
+        validator: function(v) {
+          return /^\d{10}$/.test(v);
+        },
+        message: 'Phone number must be exactly 10 digits'
+      }
+    },
+    designation: {
+      type: String,
+      required: [true, "Designation is required"],
+    },
+    email: {
+      type: String,
+      required: [true, "Email is required"],
     },
     website: {
       type: String,
     },
     gst_no: {
       type: String,
+      validate: {
+        validator: function(v) {
+          if (!v) return true; // Allow empty GST
+          return /^[A-Z0-9]{15}$/.test(v);
+        },
+        message: 'GST number must be exactly 15 characters (capital letters and numbers only)'
+      }
     },
     address: {
       type: String,
+      required: [true, "Address is required"],
     },
-    secondPersonName: {
-      type: String,
-    },
-    secondPersonContact: {
-      type: String,
-    },
-    secondPersonDesignation: {
-      type: String,
-    },
+    additionalContacts: [{
+      name: {
+        type: String,
+        required: true,
+      },
+      phone: {
+        type: String,
+        required: true,
+        validate: {
+          validator: function(v) {
+            return /^\d{10}$/.test(v);
+          },
+          message: 'Phone number must be exactly 10 digits'
+        }
+      },
+      designation: {
+        type: String,
+        required: true,
+      },
+      email: {
+        type: String,
+        required: true,
+      }
+    }],
     status: {
       type: String,
       default: "",
     },
+    comments: [{
+      comment: {
+        type: String,
+        required: true,
+      },
+      timestamp: {
+        type: Date,
+        default: Date.now,
+      },
+      createdBy: {
+        type: mongoose.Types.ObjectId,
+        ref: "Admin",
+        required: true,
+      },
+    }],
     isArchived: {
       type: Boolean,
       default: false,

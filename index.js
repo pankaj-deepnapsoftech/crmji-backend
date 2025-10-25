@@ -48,6 +48,7 @@ const dataExportRoutes = require("./routes/dataExport/routes");
 const superAdminRoutes = require("./routes/superAdmin/routes");
 const superAdminAuthRoutes = require("./routes/superAdminAuth/routes");
 const statusRoutes = require("./routes/status/routes");
+const companyStatusRoutes = require("./routes/companyStatus/routes");
 
 const PORT = process.env.PORT;
 
@@ -141,6 +142,7 @@ app.use("/api/data-export", isAuthenticated, dataExportRoutes);
 app.use("/api/super-admin", superAdminRoutes);
 app.use("/api/super-admin-auth", superAdminAuthRoutes);
 app.use("/api/status", isAuthenticated, statusRoutes);
+app.use("/api/company-status", isAuthenticated, companyStatusRoutes);
 
 // Fetch Indiamart Leads
 // fetchLast7Days();

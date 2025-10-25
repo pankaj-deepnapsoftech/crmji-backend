@@ -27,17 +27,14 @@ const indiamartLeadSchema = mongoose.Schema(
     status: {
       type: String,
       enum: [
-        "Draft",
-        "New",
+        "Meeting Scheduled",
+        "Meeting Completed",
         "In Negotiation",
-        "Completed",
-        "Loose",
-        "Cancelled",
-        "Assigned",
-        "On Hold",
-        "Follow Up",
+        "Deal on Hold",
+        "Deal Won",
+        "Deal Lost",
       ],
-      default: "New",
+      default: "Meeting Scheduled",
     },
     assigned: {
       type: mongoose.Types.ObjectId,

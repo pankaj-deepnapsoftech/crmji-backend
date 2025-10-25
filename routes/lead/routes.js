@@ -22,6 +22,8 @@ const {
   bulkSms,
   downloadRIFile,
   uploadRIFile,
+  addComment,
+  getComments,
 } = require("../../controllers/Lead/controller");
 const {
   createLeadValidator,
@@ -108,5 +110,9 @@ router.get(
   downloadRIFile
 );
 router.post("/upload-ri", isAuthenticated, checkAccess, uploadRIFile);
+
+// Comment routes
+router.post("/add-comment", isAuthenticated, checkAccess, addComment);
+router.get("/comments/:leadId", isAuthenticated, checkAccess, getComments);
 
 module.exports = router;

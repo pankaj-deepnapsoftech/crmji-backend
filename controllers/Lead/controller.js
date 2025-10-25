@@ -915,6 +915,7 @@ const leadDetails = TryCatch(async (req, res) => {
     .populate("people", "firstname lastname email phone")
     .populate("company", "companyname email phone")
     .populate("assigned", "name phone email")
+    .populate("comments.createdBy", "firstname lastname")
     .populate({
       path: "products",
       populate: [
@@ -1675,15 +1676,12 @@ const checkDataValidity = async (data) => {
     }
     // If the status value is valid
     const validStatusValues = [
-      "Draft",
-      "New",
+      "Meeting Scheduled",
+      "Meeting Completed",
       "In Negotiation",
-      "Completed",
-      "Loose",
-      "Cancelled",
-      "Assigned",
-      "On Hold",
-      "Follow Up",
+      "Deal on Hold",
+      "Deal Won",
+      "Deal Lost",
     ];
     if (item?.status) {
       let status = item?.status?.split(" ");
@@ -2375,6 +2373,73 @@ const uploadRIFile = TryCatch(async (req, res) => {
   });
 });
 
+// Add comment to lead
+const addComment = async (req, res) => {
+  try {
+    const { leadId, comment } = req.body;
+    const { _id: userId } = req.user;
+
+    if (!leadId || !comment) {
+      return res.status(400).json({
+        success: false,
+        message: "Lead ID and comment are required",
+      });
+    }
+
+    const lead = await leadModel.findById(leadId);
+    if (!lead) {
+      return res.status(404).json({
+        success: false,
+        message: "Lead not found",
+      });
+    }
+
+    // Add comment to the lead
+    lead.comments.push({
+      comment,
+      createdBy: userId,
+    });
+
+    await lead.save();
+
+    res.status(200).json({
+      success: true,
+      message: "Comment added successfully",
+      data: lead.comments,
+    });
+  } catch (error) {
+    res.status(500).json({
+      success: false,
+      message: error.message,
+    });
+  }
+};
+
+// Get lead comments
+const getComments = async (req, res) => {
+  try {
+    const { leadId } = req.params;
+
+    const lead = await leadModel.findById(leadId).populate('comments.createdBy', 'firstname lastname');
+    if (!lead) {
+      return res.status(404).json({
+        success: false,
+        message: "Lead not found",
+      });
+    }
+
+    res.status(200).json({
+      success: true,
+      data: lead.comments,
+    });
+  } catch (error) {
+    res.status(500).json({
+      success: false,
+      message: error.message,
+    });
+  }
+};
+
 module.exports = {
   createLead,
   editLead,
@@ -2395,4 +2460,6 @@ module.exports = {
   bulkSms,
   downloadRIFile,
   uploadRIFile,
+  addComment,
+  getComments,
 };
