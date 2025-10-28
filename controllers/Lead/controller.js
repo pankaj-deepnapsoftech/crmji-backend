@@ -992,12 +992,21 @@ const allLeads = TryCatch(async (req, res) => {
   let archivedPeople = [];
   if (req.user.role === "Super Admin") {
     archivedPeople = await peopleModel
-      .find({ organization: req.user.organization, isArchived: true, status: "Not Interested" })
+      .find({
+        organization: req.user.organization,
+        isArchived: true,
+        status: "Not Interested",
+      })
       .sort({ createdAt: -1 })
       .populate("creator", "name");
   } else {
     archivedPeople = await peopleModel
-      .find({ organization: req.user.organization, creator: req.user.id, isArchived: true, status: "Not Interested" })
+      .find({
+        organization: req.user.organization,
+        creator: req.user.id,
+        isArchived: true,
+        status: "Not Interested",
+      })
       .sort({ createdAt: -1 })
       .populate("creator", "name");
   }
@@ -1018,12 +1027,21 @@ const allLeads = TryCatch(async (req, res) => {
   let archivedCos = [];
   if (req.user.role === "Super Admin") {
     archivedCos = await companyModel
-      .find({ organization: req.user.organization, isArchived: true, status: "Not Interested" })
+      .find({
+        organization: req.user.organization,
+        isArchived: true,
+        status: "Not Interested",
+      })
       .sort({ createdAt: -1 })
       .populate("creator", "name");
   } else {
     archivedCos = await companyModel
-      .find({ organization: req.user.organization, creator: req.user.id, isArchived: true, status: "Not Interested" })
+      .find({
+        organization: req.user.organization,
+        creator: req.user.id,
+        isArchived: true,
+        status: "Not Interested",
+      })
       .sort({ createdAt: -1 })
       .populate("creator", "name");
   }
@@ -2066,7 +2084,6 @@ const saveOrUpdateKYC = TryCatch(async (req, res) => {
     },
     { new: true }
   );
-  
 
   res.status(200).json({
     success: true,
@@ -2105,17 +2122,13 @@ const bulkSms = TryCatch(async (req, res) => {
 
     const dltTemplateId = template.templateId;
     const templateText = template.templateText;
-    const useEntityId = template.entityId || sms_entity_id;  // Prefer template's entityId
+    const useEntityId = template.entityId || sms_entity_id; // Prefer template's entityId
 
     // Website SMS config
     const websiteConfiguration = await websiteConfigurationModel.findOne({
       organization: req.user.organization,
     });
-    const {
-      sms_api_key,
-      sms_api_secret,
-      sms_sender_id,
-    } = websiteConfiguration;
+    const { sms_api_key, sms_api_secret, sms_sender_id } = websiteConfiguration;
 
     if (!sms_api_key || !sms_api_secret) {
       return res
@@ -2125,12 +2138,12 @@ const bulkSms = TryCatch(async (req, res) => {
 
     // Helper function to replace {#var#} placeholders sequentially
     const replacePlaceholders = (text, varsList) => {
-      const parts = text.split('{#var#}');
+      const parts = text.split("{#var#}");
       if (parts.length !== varsList.length + 1) {
         // Fallback: replace all with first var if mismatch
-        return text.replace(/\{#var#\}/g, varsList[0] || '');
+        return text.replace(/\{#var#\}/g, varsList[0] || "");
       }
-      return parts.map((part, i) => part + (varsList[i] || '')).join('');
+      return parts.map((part, i) => part + (varsList[i] || "")).join("");
     };
 
     let results = [];
@@ -2147,14 +2160,26 @@ const bulkSms = TryCatch(async (req, res) => {
         continue;
       }
 
-      let phone = (lead?.people?.phone || lead?.company?.phone || "").toString();
+      let phone = (
+        lead?.people?.phone ||
+        lead?.company?.phone ||
+        ""
+      ).toString();
       // Strip +91 or 91 to get 10-digit number (as per Nimbus requirement)
-      phone = phone.replace(/^\+?91/, '');
-      const name = (lead?.people?.firstname || lead?.company?.companyname || "Customer").trim();
-      const productName = lead.products[0]?.name || '';
+      phone = phone.replace(/^\+?91/, "");
+      const name = (
+        lead?.people?.firstname ||
+        lead?.company?.companyname ||
+        "Customer"
+      ).trim();
+      const productName = lead.products[0]?.name || "";
 
       if (!phone || phone.length !== 10) {
-        results.push({ leadId, status: "failed", error: "Invalid phone number (must be 10 digits)" });
+        results.push({
+          leadId,
+          status: "failed",
+          error: "Invalid phone number (must be 10 digits)",
+        });
         continue;
       }
 
@@ -2165,10 +2190,16 @@ const bulkSms = TryCatch(async (req, res) => {
       let smsMessage = replacePlaceholders(templateText, varsList);
 
       // Add 1-second delay for rate limiting
-      await new Promise(resolve => setTimeout(resolve, 1000));
+      await new Promise((resolve) => setTimeout(resolve, 1000));
 
       try {
-        console.log("Sending SMS:", { phone, dltTemplateId, smsMessage, sms_sender_id, useEntityId });
+        console.log("Sending SMS:", {
+          phone,
+          dltTemplateId,
+          smsMessage,
+          sms_sender_id,
+          useEntityId,
+        });
         const smsResult = await sendSms(
           sms_api_key,
           sms_api_secret,
@@ -2377,7 +2408,7 @@ const uploadRIFile = TryCatch(async (req, res) => {
 const addComment = async (req, res) => {
   try {
     const { leadId, comment } = req.body;
-    const { _id: userId } = req.user;
+    const userId = req.user?.id || req.user?._id;
 
     if (!leadId || !comment) {
       return res.status(400).json({
@@ -2420,7 +2451,9 @@ const getComments = async (req, res) => {
   try {
     const { leadId } = req.params;
 
-    const lead = await leadModel.findById(leadId).populate('comments.createdBy', 'firstname lastname');
+    const lead = await leadModel
+      .findById(leadId)
+      .populate("comments.createdBy", "firstname lastname");
     if (!lead) {
       return res.status(404).json({
         success: false,

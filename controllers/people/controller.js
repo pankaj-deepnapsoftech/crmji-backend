@@ -9,6 +9,70 @@ const peopleModel = require("../../models/people");
 const proformaInvoiceModel = require("../../models/proformaInvoice");
 const { generateOTP } = require("../../utils/generateOtp");
 
+// Add remark to a person
+const addRemarkToPerson = TryCatch(async (req, res) => {
+  const { peopleId, remark } = req.body;
+  const userId = req.user?.id || req.user?._id;
+
+  if (!peopleId || !remark) {
+    return res
+      .status(400)
+      .json({ success: false, message: "People ID and remark are required" });
+  }
+
+  const person = await peopleModel.findById(peopleId);
+  if (!person) {
+    throw new ErrorHandler("Person not found", 404);
+  }
+
+  if (!userId) {
+    return res.status(401).json({ success: false, message: "Unauthorized" });
+  }
+
+  if (
+    req.user.role !== "Super Admin" &&
+    person.creator.toString() !== req.user.id.toString()
+  ) {
+    throw new Error(
+      "You are not allowed to add remarks to this individual",
+      401
+    );
+  }
+
+  person.remarksLog.push({ remark, createdBy: userId });
+  await person.save();
+
+  res
+    .status(200)
+    .json({ success: true, message: "Remark added", data: person.remarksLog });
+});
+
+// Get remarks for a person
+const getRemarksForPerson = TryCatch(async (req, res) => {
+  const { peopleId } = req.params;
+
+  const person = await peopleModel.findById(peopleId).populate({
+    path: "remarksLog.createdBy",
+    select: "firstname lastname name",
+  });
+
+  if (!person) {
+    throw new ErrorHandler("Person not found", 404);
+  }
+
+  if (
+    req.user.role !== "Super Admin" &&
+    person.creator.toString() !== req.user.id.toString()
+  ) {
+    throw new Error(
+      "You are not allowed to access this individual's remarks",
+      401
+    );
+  }
+
+  res.status(200).json({ success: true, data: person.remarksLog || [] });
+});
+
 const createPeople = TryCatch(async (req, res) => {
   const { firstname, lastname, email, phone, status, comment } = req.body;
 
@@ -45,7 +109,7 @@ const createPeople = TryCatch(async (req, res) => {
     phone,
     status,
     comment: comment || "",
-    isArchived: status === 'Not Interested',
+    isArchived: status === "Not Interested",
     otp,
     expiry: expiresAt,
     verify: false,
@@ -61,7 +125,8 @@ const createPeople = TryCatch(async (req, res) => {
 
 const editPeople = TryCatch(async (req, res) => {
   //   const { peopleId, firstname, lastname, email, phone, company } = req.body;
-  const { peopleId, firstname, lastname, email, phone, status, comment } = req.body;
+  const { peopleId, firstname, lastname, email, phone, status, comment } =
+    req.body;
 
   const isExistingPerson = await peopleModel.findById(peopleId);
 
@@ -94,7 +159,7 @@ const editPeople = TryCatch(async (req, res) => {
       phone,
       status,
       comment: comment || "",
-      ...(status ? { isArchived: status === 'Not Interested' } : {}),
+      ...(status ? { isArchived: status === "Not Interested" } : {}),
     },
     { new: true }
   );
@@ -174,7 +239,9 @@ const allPersons = TryCatch(async (req, res) => {
   let people = [];
   const { archivedOnly = false } = req.body || {};
 
-  const archivedFilter = archivedOnly ? { isArchived: true } : { isArchived: false };
+  const archivedFilter = archivedOnly
+    ? { isArchived: true }
+    : { isArchived: false };
 
   if (req.user.role === "Super Admin") {
     people = await peopleModel
@@ -341,4 +408,6 @@ module.exports = {
   SendBulkEmailVerifiedUser,
   getAllEmailSentData,
   getAllWhatsappSentData,
+  addRemarkToPerson,
+  getRemarksForPerson,
 };
