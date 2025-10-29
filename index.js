@@ -57,14 +57,14 @@ const allowedOrigins = [
   "http://localhost:3001",
   "http://localhost:5173",
   "http://localhost:8066",
+  "http://localhost:9003",
   "http://localhost:8058",
+  "https://crm.itsybizz.com",
+  "https://crmapi.itsybizz.com",
   "https://deepnapcrm.deepmart.shop",
   "https://crmdemo.deepmart.shop",
   "https://crmdemoapi.deepmart.shop",
   "https://subscription.deepnapsoftech.com",
-  "https://crm.itsybizz.com",
-  "https://crmapi.itsybizz.com",
-  
 ];
 
 const corsOptions = {
@@ -85,7 +85,7 @@ const corsOptions = {
 
 const app = express();
 const server = createServer(app);
-const io = new Server(server, {cors: corsOptions});
+// const io = new Server(server, {cors: corsOptions});
 const path = require("path");
 const { SendTemplate, NavigateTowhatsapp, totalWhatsapp } = require("./controllers/whatsapp/controller");
 
@@ -93,7 +93,7 @@ app.use(express.static("uploads"));
 app.use(cors(corsOptions));
 app.use(express.json());
 app.use(express.urlencoded({extended: true}));
-app.set("io", io);
+// app.set("io", io);
 
 const filePath = path.join(__dirname, "uploads");
 app.use("/images", express.static(filePath));
@@ -154,14 +154,14 @@ const emailToSocketId = new Map();
 //   cookieParser()(socket.request, socket.request.res, async (err)=> await socketAuthenticator(err, socket, next));
 // });
 
-io.on('connection', (socket)=>{
-  // console.log("A user connected", socket.id)
-  // emailToSocketId.set(socket.user.email, socket.id);
-  socketHandler(socket, io);
-  // socket.on('disconnect', () => {
-  //   console.log("User disconnected", socket.id);
-  // });
-})
+// io.on('connection', (socket)=>{
+//   // console.log("A user connected", socket.id)
+//   // emailToSocketId.set(socket.user.email, socket.id);
+//   socketHandler(socket, io);
+//   // socket.on('disconnect', () => {
+//   //   console.log("User disconnected", socket.id);
+//   // });
+// })
 
 app.use(errorMiddleware);
 
