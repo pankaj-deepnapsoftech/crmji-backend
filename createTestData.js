@@ -48,7 +48,7 @@ const createTestData = async () => {
       if (!category) {
         category = new productCategoryModel({
           categoryname: 'Test Category',
-          description: 'Test category for demo data',
+          description: 'Test category for Meeting data',
           organization: orgId,
           creator: admin._id
         });

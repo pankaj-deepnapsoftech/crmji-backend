@@ -984,7 +984,7 @@ const allLeads = TryCatch(async (req, res) => {
       leadCategory: lead?.leadCategory,
       dataBank: lead?.dataBank,
       demoPdf: lead?.demoPdf,
-      demo: lead?.demo,
+      meeting: lead?.meeting,
     };
   });
 
@@ -1859,7 +1859,7 @@ const dataBank = async (req, res) => {
 };
 
 const scheduleDemo = TryCatch(async (req, res) => {
-  const { leadId, demoDateTime, demoType, notes } = req.body;
+  const { leadId, meetingDateTime, meetingType, notes } = req.body;
 
   const lead = await leadModel.findById(leadId);
   if (!lead) {
@@ -1872,7 +1872,7 @@ const scheduleDemo = TryCatch(async (req, res) => {
     lead?.assigned?._id?.toString() !== req.user.id.toString()
   ) {
     throw new ErrorHandler(
-      "You don't have permission to schedule demo for this lead",
+      "You don't have permission to schedule meeting for this lead",
       403
     );
   }
@@ -1880,9 +1880,9 @@ const scheduleDemo = TryCatch(async (req, res) => {
   const updatedLead = await leadModel.findByIdAndUpdate(
     leadId,
     {
-      demo: {
-        demoDateTime: new Date(demoDateTime),
-        demoType,
+      meeting: {
+        meetingDateTime: new Date(meetingDateTime),
+        meetingType,
         notes: notes || "",
       },
       status: "Scheduled Demo",
@@ -1892,7 +1892,7 @@ const scheduleDemo = TryCatch(async (req, res) => {
 
   res.status(200).json({
     success: true,
-    message: "Demo scheduled successfully",
+    message: "meeting scheduled successfully",
     lead: updatedLead,
   });
 });
@@ -1936,7 +1936,7 @@ const completeDemo = TryCatch(async (req, res) => {
     .findByIdAndUpdate(
       leadId,
       {
-        status: "Demo Completed",
+        status: "Meeting Completed",
         riFile: riFileUrl,
       },
       { new: true }
@@ -2031,12 +2031,12 @@ const completeDemo = TryCatch(async (req, res) => {
       );
     }
   } catch (err) {
-    console.error("Email error (completeDemo):", err);
+    console.error("Email error (completeMeeting):", err);
   }
 
   res.status(200).json({
     success: true,
-    message: "Demo completed successfully & notifications sent",
+    message: "Meeting completed successfully & notifications sent",
     lead: updatedLead,
   });
 });
@@ -2320,7 +2320,7 @@ const editScheduleDemo = TryCatch(async (req, res) => {
   };
 
   if (remark) {
-    updateData["demo.remark"] = remark;
+    updateData["meeting.remark"] = remark;
   }
 
   const updatedLead = await leadModel
@@ -2332,7 +2332,7 @@ const editScheduleDemo = TryCatch(async (req, res) => {
   console.log("Lead after status update:", {
     id: updatedLead._id,
     status: updatedLead.status,
-    demoRemark: updatedLead.demo?.remark,
+    demoRemark: updatedLead.meeting?.remark,
   });
 
   let customerCreated = false;
@@ -2376,8 +2376,8 @@ const editScheduleDemo = TryCatch(async (req, res) => {
   }
 
   const message = customerCreated
-    ? "Demo completed successfully and customer record created!"
-    : "Scheduled demo updated successfully";
+    ? "Meeting completed successfully and customer record created!"
+    : "Scheduled Meeting updated successfully";
 
   res.status(200).json({
     success: true,
