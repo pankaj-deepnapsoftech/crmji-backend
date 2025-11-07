@@ -378,7 +378,7 @@ const downloadProformaInvoice = TryCatch(async (req, res) => {
         if (indexRow % 2 === 0) {
           pdf
             .rect(rectRow.x, rectRow.y, rectRow.width, rectRow.height)
-            .fill("#f7fafc")
+            // .fill("#f7fafc")
             .fillColor("#171717");
         }
       },

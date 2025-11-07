@@ -415,7 +415,7 @@ const downloadInvoice = TryCatch(async (req, res, next) => {
       total: "Rs " + (product.price * product.quantity).toLocaleString("en-IN"),
     };
   });
-
+ console.log("hey",data)
   const table = {
     options: {
       prepareHeader: () => {
@@ -428,7 +428,7 @@ const downloadInvoice = TryCatch(async (req, res, next) => {
         if (indexRow % 2 === 0) {
           pdf
             .rect(rectRow.x, rectRow.y, rectRow.width, rectRow.height)
-            .fill("#f7fafc")
+            // .fill("#f7fafc")
             .fillColor("#171717");
         }
       },
@@ -484,6 +484,7 @@ const downloadInvoice = TryCatch(async (req, res, next) => {
         label: "MRP",
         property: "mrp",
         width: 65,
+        color:"#000",
         headerColor: "#dc2626",
         align: "right",
       },
@@ -502,21 +503,36 @@ const downloadInvoice = TryCatch(async (req, res, next) => {
         align: "right",
       },
     ],
+    
     datas: data,
   };
 
-  pdf.table(table, {
-    prepareHeader: () =>
-      pdf.font("Helvetica-Bold").fontSize(10).fillColor("#ffffff"),
-    prepareRow: (row, i) => {
-      pdf.font("Helvetica").fontSize(10);
-      if (i % 2 === 0) {
-        pdf.fillColor("#f8f9fa");
-      } else {
-        pdf.fillColor("#ffffff");
-      }
-    },
-  });
+ pdf.table(table, {
+  prepareHeader: () => {
+    pdf.font("Helvetica-Bold").fontSize(10).fillColor("#ffffff"); // Header text color white
+  },
+  prepareRow: (row, indexColumn, indexRow, rectRow, rectCell) => {
+    // Draw alternate row backgrounds BEFORE text
+    if (indexRow % 2 === 0) {
+      pdf
+        .rect(rectRow.x, rectRow.y, rectRow.width, rectRow.height)
+        // .fill("#f7fafc")y
+        .fillColor("#000000") // Light gray
+    } else {
+      pdf
+        .rect(rectRow.x, rectRow.y, rectRow.width, rectRow.height)
+        .fill("#ffffff"); // White
+    }
+
+    // Then set text color and font
+    pdf.font("Helvetica").fontSize(10).fillColor("#171717");
+  },
+  // Table border colors
+  columnSpacing: 2,
+  padding: 5,
+});
+
+
 
   // Payment Summary Section with better styling
   pdf.y += 10;
