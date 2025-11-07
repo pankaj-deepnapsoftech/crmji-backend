@@ -25,9 +25,9 @@ const leadSchema = mongoose.Schema(
         "New",
         "Assigned",
         "Meeting Scheduled",
-        "Scheduled Demo",
+        "Scheduled Meeting",
         "Meeting Completed",
-        "Demo Completed",
+        "Meeting Completed",
         "In Negotiation",
         "Deal on Hold",
         "Deal Won",
@@ -101,9 +101,9 @@ const leadSchema = mongoose.Schema(
       type: String,
       enum: ["Hot", "Cold", "Warm"],
     },
-    demo: {
-      demoDateTime: Date,
-      demoType: {
+    meeting: {
+      meetingDateTime: Date,
+      meetingType: {
         type: String,
         enum: ["Physical", "Virtual"],
       },
