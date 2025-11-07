@@ -30,6 +30,15 @@ const errorMiddleware = (err, req, res, next) => {
       err.message = `Invalid format of ${errorPath}`;
       err.statusCode = 400;
   }
+  
+  // SMTP Authentication errors
+  if(err.code === 'EAUTH' || err.responseCode === 535 || err.message?.includes('535') || err.message?.includes('authentication failed')){
+      err.statusCode = 500;
+      // Keep the user-friendly message from sendEmail helper
+      if(!err.message.includes('authentication failed') && !err.message.includes('EMAIL_ID')){
+          err.message = "Email service authentication failed. Please contact support to verify email configuration.";
+      }
+  }
 
   return res.status(err.statusCode).json({
       status: err.statusCode,

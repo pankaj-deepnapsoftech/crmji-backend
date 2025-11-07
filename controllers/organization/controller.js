@@ -1,4 +1,4 @@
-const { TryCatch } = require("../../helpers/error");
+const { TryCatch, ErrorHandler } = require("../../helpers/error");
 const generateOTP = require("../../helpers/generateOTP");
 const organizationModel = require("../../models/organization");
 const bcrypt = require("bcryptjs");
@@ -16,11 +16,11 @@ const create = TryCatch(async (req, res) => {
 
   let isExistingOrganization = await organizationModel.findOne({ email });
   if (isExistingOrganization) {
-    throw new Error("Email id is already used", 400);
+    throw new ErrorHandler("Email id is already used", 400);
   }
   isExistingOrganization = await organizationModel.findOne({ phone });
   if (isExistingOrganization) {
-    throw new Error("Phone no. is already used", 400);
+    throw new ErrorHandler("Phone no. is already used", 400);
   }
 
   const hashedPass = await bcrypt.hash(password, 12);
@@ -40,18 +40,27 @@ const create = TryCatch(async (req, res) => {
     otp,
   });
 
-  await sendEmail(
-    email,
-    "OTP Verification",
-    `
-    <div>Hi ${organization.name},</div>
-    <br>
-    <div>${otp} is your OTP(One-Time-Password) to verify your account. OTP is valid for 5 minutes. Do not share your OTP with anyone.</div>
-    <br>    
-    <div>Best Regards</div>
-    <div>Deepnap Softech</div>
-    `
-  );
+  try {
+    await sendEmail(
+      email,
+      "OTP Verification",
+      `
+      <div>Hi ${organization.name},</div>
+      <br>
+      <div>${otp} is your OTP(One-Time-Password) to verify your account. OTP is valid for 5 minutes. Do not share your OTP with anyone.</div>
+      <br>    
+      <div>Best Regards</div>
+      <div>Deepnap Softech</div>
+      `
+    );
+  } catch (emailError) {
+    console.error("Failed to send registration email:", emailError);
+    // Log the OTP for debugging in development (remove in production)
+    if (process.env.NODE_ENV !== 'production') {
+      console.log(`[DEV MODE] OTP for ${email}: ${otp}`);
+    }
+    throw emailError; // Re-throw to prevent registration if email fails
+  }
 
   res.status(200).json({
     status: 200,
@@ -65,7 +74,7 @@ const verifyOTP = TryCatch(async (req, res) => {
 
   const isOTPValid = await otpModel.findOne({ email, otp });
   if (!isOTPValid) {
-    throw new Error("Invalid OTP");
+    throw new ErrorHandler("Invalid OTP", 400);
   }
 
   await otpModel.deleteOne({ email, otp });
@@ -157,7 +166,7 @@ const login = TryCatch(async (req, res) => {
     .findOne({ email })
     .populate({ path: "account", populate: { path: "subscription" } });
   if (!isExistingOrganization) {
-    throw new Error("Organization not found", 404);
+    throw new ErrorHandler("Organization not found", 404);
   }
   console.log(isExistingOrganization.password)
   const isPasswordMatched = await bcrypt.compare(
@@ -165,7 +174,7 @@ const login = TryCatch(async (req, res) => {
     isExistingOrganization.password
   );
   if (!isPasswordMatched) {
-    throw new Error("Make sure you have entered the correct credentials", 401);
+    throw new ErrorHandler("Make sure you have entered the correct credentials", 401);
   }
 
   const isVerified = await organizationModel
@@ -203,7 +212,7 @@ const login = TryCatch(async (req, res) => {
   const admin = await adminModel.findOne({email: isExistingOrganization.email});
   
   if (!admin) {
-    throw new Error("Admin user not found for this organization", 404);
+    throw new ErrorHandler("Admin user not found for this organization", 404);
   }
 
   const admin_access_token = jwt.sign(
@@ -234,7 +243,7 @@ const login = TryCatch(async (req, res) => {
 
 const loginWithAccessToken = TryCatch(async (req, res, next) => {
   if (!req.headers.authorization) {
-    throw new Error("Access token not provided", 401);
+    throw new ErrorHandler("Access token not provided", 401);
   }
 
   const access_token = req.headers.authorization.split(" ")[1];
@@ -252,7 +261,7 @@ const loginWithAccessToken = TryCatch(async (req, res, next) => {
     .findById(verified._id)
     .populate({ path: "account", populate: { path: "subscription" } });
     if (!user) {
-      throw new Error("User not found");
+      throw new ErrorHandler("User not found", 404);
     }
 
     return res.status(200).json({
@@ -274,7 +283,7 @@ const getOTP = TryCatch(async (req, res) => {
 
   const user = await organizationModel.findOne({ email: email });
   if (!user) {
-    throw new Error("User doesn't exists", 404);
+    throw new ErrorHandler("User doesn't exists", 404);
   }
   const isExistingOtp = await otpModel.findOne({ email: email });
 
@@ -331,12 +340,12 @@ const passwordResetOTPVerify = TryCatch(async (req, res) => {
 
   const user = await organizationModel.findOne({ email: email });
   if (!user) {
-    throw new Error("User doesn't exists", 404);
+    throw new ErrorHandler("User doesn't exists", 404);
   }
 
   const isOTPValid = await otpModel.findOne({ email: email, otp: otp });
   if (!isOTPValid) {
-    throw new Error("Invalid OTP");
+    throw new ErrorHandler("Invalid OTP", 400);
   }
 
   await otpModel.deleteOne({ email: email });
@@ -411,7 +420,7 @@ const isAuthenticatedOrganization = TryCatch(async (req, res, next) => {
     ) {
       const organization = await organizationModel.findById(verified._id);
       if (!organization) {
-        throw new Error("Organization doesn't exists", 404);
+        throw new ErrorHandler("Organization doesn't exists", 404);
       }
 
       req.organization = {
@@ -439,7 +448,7 @@ const activateTrialAccount = TryCatch(async (req, res) => {
   });
 
   if (!account) {
-    throw new Error("Account not found", 404);
+    throw new ErrorHandler("Account not found", 404);
   }
 
   account.trial_started = true;
@@ -453,6 +462,45 @@ const activateTrialAccount = TryCatch(async (req, res) => {
   });
 });
 
+// Test email configuration endpoint (for debugging)
+const testEmailConfig = TryCatch(async (req, res) => {
+  const { testEmail } = req.body;
+  
+  if (!testEmail) {
+    throw new ErrorHandler("Test email address is required", 400);
+  }
+
+  try {
+    await sendEmail(
+      testEmail,
+      "Test Email - Email Configuration",
+      `
+      <div>Hi,</div>
+      <br>
+      <div>This is a test email to verify your email configuration.</div>
+      <br>
+      <div>If you received this email, your SMTP configuration is working correctly!</div>
+      <br>
+      <div>Best Regards</div>
+      <div>CRM System</div>
+      `
+    );
+
+    res.status(200).json({
+      status: 200,
+      success: true,
+      message: "Test email sent successfully! Check your inbox.",
+    });
+  } catch (error) {
+    res.status(500).json({
+      status: 500,
+      success: false,
+      message: error.message,
+      details: "Email configuration test failed. Please check your EMAIL_ID and EMAIL_PASSWORD in .env file.",
+    });
+  }
+});
+
 module.exports = {
   create,
   verifyOTP,
@@ -463,4 +511,5 @@ module.exports = {
   passwordResetOTPVerify,
   isAuthenticatedOrganization,
   activateTrialAccount,
+  testEmailConfig,
 };
