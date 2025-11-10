@@ -79,8 +79,10 @@ exports.totalWhatsapp = async (req,res)=>{
 
 // ✅ GET ALL TEMPLATES
 exports.GetAllTemplates = async (req, res) => {
+
+  console.log("hey")
   try {
-    const BUSINESS_ACCOUNT_ID = "575068729020861"; // Tera WABA ID
+    const BUSINESS_ACCOUNT_ID = "379032918446573"; // Tera WABA ID
     const API_VERSION = "v21.0";
 
     const data = await axios.get(
