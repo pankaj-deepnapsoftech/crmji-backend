@@ -76,3 +76,44 @@ exports.totalWhatsapp = async (req,res)=>{
     });
   }
 }
+
+// ✅ GET ALL TEMPLATES
+exports.GetAllTemplates = async (req, res) => {
+  try {
+    const BUSINESS_ACCOUNT_ID = "575068729020861"; // Tera WABA ID
+    const API_VERSION = "v21.0";
+
+    const data = await axios.get(
+      `https://graph.facebook.com/${API_VERSION}/${BUSINESS_ACCOUNT_ID}/message_templates`,
+      {
+        headers: {
+          Authorization: `Bearer ${process.env.whatsapp_token}`,
+          "Content-Type": "application/json",
+        },
+        params: {
+          fields:
+            "name,status,category,language,id,created_timestamp,message_send_ttl_seconds",
+          limit: 100, // 100 templates per page
+        },
+      }
+    );
+
+    return res.status(200).json({
+      success: true,
+      count: data.data.data.length,
+      message: "All templates fetched successfully",
+      data: data.data.data,
+      paging: data.data.paging || null,
+    });
+  } catch (error) {
+    console.error(
+      "Error fetching templates:",
+      error.response?.data || error.message
+    );
+    res.status(400).json({
+      success: false,
+      message: "Error fetching templates",
+      error: error.response?.data?.error?.message || error.message,
+    });
+  }
+};

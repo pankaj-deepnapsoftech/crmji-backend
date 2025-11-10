@@ -87,7 +87,7 @@ const app = express();
 const server = createServer(app);
 // const io = new Server(server, {cors: corsOptions});
 const path = require("path");
-const { SendTemplate, NavigateTowhatsapp, totalWhatsapp } = require("./controllers/whatsapp/controller");
+const { SendTemplate, NavigateTowhatsapp, totalWhatsapp, GetAllTemplates } = require("./controllers/whatsapp/controller");
 
 app.use(express.static("uploads"));
 app.use(cors(corsOptions));
@@ -137,6 +137,7 @@ app.use("/api/renewal" , RenewalRecord);
 app.post("/api/send-builk-Whatsapp",SendTemplate)
 app.get("/NavigateTowhatsapp",NavigateTowhatsapp)
 app.get("/api/totalWhatsapp",isAuthenticated, totalWhatsapp);
+app.get("/api/whatsapp/templates", GetAllTemplates);
 app.use("/api/document-center", isAuthenticated, documentCenterRoutes);
 app.use("/api/data-export", isAuthenticated, dataExportRoutes);
 app.use("/api/super-admin", superAdminRoutes);
