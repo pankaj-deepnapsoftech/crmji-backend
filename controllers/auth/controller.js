@@ -304,29 +304,28 @@ const login = TryCatch(async (req, res) => {
 
   let allowedroutes;
   if (trialActive) {
-    allowedroutes = ["dashboard", "people", "company", "lead"];
+    const defaultSuperAdminRoutes = [
+      "dashboard",
+      "people",
+      "company",
+      "lead",
+    ];
+    if (existingUser.role === "Super Admin") {
+      allowedroutes = (existingUser.allowedroutes && existingUser.allowedroutes.length > 0)
+        ? existingUser.allowedroutes
+        : defaultSuperAdminRoutes;
+    } else {
+      allowedroutes = existingUser.allowedroutes || [];
+    }
   } else if (
     organization?.account?.account_type === "subscription" &&
     organization?.account?.account_status === "active"
   ) {
     const defaultSuperAdminRoutes = [
-      "admin",
       "dashboard",
       "people",
       "company",
       "lead",
-      "product",
-      "category",
-      "expense",
-      "expense-category",
-      "offer",
-      "proforma-invoice",
-      "invoice",
-      "payment",
-      "customer",
-      "report",
-      "support",
-      "website configuration",
     ];
     if (existingUser.role === "Super Admin") {
       allowedroutes = (existingUser.allowedroutes && existingUser.allowedroutes.length > 0)
@@ -397,29 +396,28 @@ const loginWithAccessToken = TryCatch(async (req, res, next) => {
 
     let allowedroutes;
     if (trialActive) {
-      allowedroutes = ["dashboard", "people", "company", "lead"];
+      const defaultSuperAdminRoutes = [
+        "dashboard",
+        "people",
+        "company",
+        "lead",
+      ];
+      if (user.role === "Super Admin") {
+        allowedroutes = (user.allowedroutes && user.allowedroutes.length > 0)
+          ? user.allowedroutes
+          : defaultSuperAdminRoutes;
+      } else {
+        allowedroutes = user.allowedroutes || [];
+      }
     } else if (
       (organization?.account?.account_type === "subscription" &&
         organization?.account?.account_status === "active")
     ) {
       const defaultSuperAdminRoutes = [
-        "admin",
         "dashboard",
         "people",
         "company",
         "lead",
-        "product",
-        "category",
-        "expense",
-        "expense-category",
-        "offer",
-        "proforma-invoice",
-        "invoice",
-        "payment",
-        "customer",
-        "report",
-        "support",
-        "website configuration",
       ];
       if (user.role === "Super Admin") {
         allowedroutes = (user.allowedroutes && user.allowedroutes.length > 0)
