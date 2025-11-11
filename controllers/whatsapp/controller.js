@@ -78,23 +78,21 @@ exports.totalWhatsapp = async (req,res)=>{
 }
 
 
-
 exports.GetApprovedTemplates = async (req, res) => {
   try {
-    const BUSINESS_ACCOUNT_ID = "379032918446573"; // your WABA ID
-    const API_VERSION = "v21.0";
-
+    const WABA_ID = "1789176135196884";
+   
     const response = await axios.get(
-      `https://graph.facebook.com/${API_VERSION}/${BUSINESS_ACCOUNT_ID}/message_templates`,
+      `https://graph.facebook.com/v21.0/${WABA_ID}/message_templates`,
       {
         headers: {
           Authorization: `Bearer ${process.env.whatsapp_token}`,
           "Content-Type": "application/json",
         },
         params: {
-          fields: "name,status,category,language,id,created_timestamp,message_send_ttl_seconds",
+          fields:
+            "name,status,category,language,id,created_timestamp,message_send_ttl_seconds",
           limit: 100,
-          // 👇 filter to only approved templates
           status: "APPROVED",
         },
       }
@@ -102,10 +100,9 @@ exports.GetApprovedTemplates = async (req, res) => {
 
     return res.status(200).json({
       success: true,
-      count: response.data.data.length,
       message: "Approved templates fetched successfully",
+      total: response.data.data?.length || 0,
       data: response.data.data,
-      paging: response.data.paging || null,
     });
   } catch (error) {
     console.error("Error fetching approved templates:", error.response?.data || error.message);
