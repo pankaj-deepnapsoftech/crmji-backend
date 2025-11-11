@@ -29,14 +29,18 @@ const register = TryCatch(async (req, res) => {
     );
   }
   if (isExistingOrganization?.account?.account_type === "subscription") {
-    const totalEmployees = await organizationModel.find({
+    // Count only Admin users (exclude Super Admin) for this organization
+    // Super Admin is the owner and doesn't count towards the limit
+    const totalEmployees = await adminModel.countDocuments({
       organization: isExistingOrganization._id,
-    }).countDocuments();
-    const totalAllowedAccounts = isExistingOrganization.employeeCount;
+      role: { $ne: "Super Admin" }, // Exclude Super Admin from count
+    });
+    const totalAllowedAccounts = isExistingOrganization.employeeCount || 0;
 
-    if (totalEmployees >= totalAllowedAccounts + 1) {
+    // Block if current count would exceed limit (before creating new user)
+    if (totalEmployees >= totalAllowedAccounts) {
       throw new Error(
-        "You have reached the max limit of employee accounts",
+        `You have reached the max limit of ${totalAllowedAccounts} employee accounts. Cannot create more users.`,
         400
       );
     }
@@ -103,36 +107,39 @@ const register = TryCatch(async (req, res) => {
   // //   });
   // }
 
-  // Generate patterned employee ID: FN2 + LN2 + NNN (001 start per prefix)
-  const buildPrefixFromName = (fullName = "") => {
-    const parts = fullName
-      .split(/\s+/)
-      .map((p) => p.trim())
-      .filter((p) => p.length > 0);
-    const first = (parts[0] || "").replace(/[^a-z]/gi, "");
-    const last = (parts.length > 1 ? parts[parts.length - 1] : "").replace(/[^a-z]/gi, "");
-    const fn2 = (first.toUpperCase().slice(0, 2) || "").padEnd(2, "X");
-    const ln2 = (last.toUpperCase().slice(0, 2) || "").padEnd(2, "X");
-    return `${fn2}${ln2}`;
-  };
-
-  const generateEmployeeId = async (fullName) => {
-    const prefix = buildPrefixFromName(fullName);
-    // Find latest existing ID with this prefix, relying on zero-padded numeric suffix
-    const latest = await adminModel
-      .findOne({ employeeId: { $regex: `^${prefix}\\\d{3}$` } })
-      .sort({ employeeId: -1 })
-      .select("employeeId");
+  // Generate sequential employee ID: UI001, UI002, UI003, etc. (per organization)
+  const generateEmployeeId = async (organizationId) => {
+    // Find all employeeIds for this organization that start with "UI" and have 3 digits
+    const allEmployeeIds = await adminModel
+      .find({ 
+        organization: organizationId,
+        employeeId: { $regex: /^UI\d{3}$/ }
+      })
+      .select("employeeId")
+      .lean();
+    
     let nextNum = 1;
-    if (latest?.employeeId) {
-      const current = parseInt(latest.employeeId.slice(-3), 10);
-      if (!Number.isNaN(current)) nextNum = current + 1;
+    if (allEmployeeIds && allEmployeeIds.length > 0) {
+      // Extract all numbers and find the maximum
+      const numbers = allEmployeeIds
+        .map(admin => {
+          const num = parseInt(admin.employeeId?.slice(2) || "0", 10);
+          return Number.isNaN(num) ? 0 : num;
+        })
+        .filter(num => num > 0);
+      
+      if (numbers.length > 0) {
+        const maxNum = Math.max(...numbers);
+        nextNum = maxNum + 1;
+      }
     }
+    
+    // Format as UI001, UI002, etc.
     const suffix = String(nextNum).padStart(3, "0");
-    return `${prefix}${suffix}`;
+    return `UI${suffix}`;
   };
 
-  const employeeId = await generateEmployeeId(name);
+  const employeeId = await generateEmployeeId(isExistingOrganization._id);
 
   const user = await adminModel.create({
     organization: isExistingOrganization._id,
@@ -142,6 +149,7 @@ const register = TryCatch(async (req, res) => {
     designation,
     employeeId,
     password: hashedPassword,
+    role: "Admin", // Explicitly set role to Admin (not Super Admin)
   });
 
   const otp = generateOTP();
