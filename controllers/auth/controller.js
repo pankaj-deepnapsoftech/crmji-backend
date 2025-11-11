@@ -29,14 +29,18 @@ const register = TryCatch(async (req, res) => {
     );
   }
   if (isExistingOrganization?.account?.account_type === "subscription") {
-    const totalEmployees = await organizationModel.find({
+    // Count only Admin users (exclude Super Admin) for this organization
+    // Super Admin is the owner and doesn't count towards the limit
+    const totalEmployees = await adminModel.countDocuments({
       organization: isExistingOrganization._id,
-    }).countDocuments();
-    const totalAllowedAccounts = isExistingOrganization.employeeCount;
+      role: { $ne: "Super Admin" }, // Exclude Super Admin from count
+    });
+    const totalAllowedAccounts = isExistingOrganization.employeeCount || 0;
 
-    if (totalEmployees >= totalAllowedAccounts + 1) {
+    // Block if current count would exceed limit (before creating new user)
+    if (totalEmployees >= totalAllowedAccounts) {
       throw new Error(
-        "You have reached the max limit of employee accounts",
+        `You have reached the max limit of ${totalAllowedAccounts} employee accounts. Cannot create more users.`,
         400
       );
     }
@@ -142,6 +146,7 @@ const register = TryCatch(async (req, res) => {
     designation,
     employeeId,
     password: hashedPassword,
+    role: "Admin", // Explicitly set role to Admin (not Super Admin)
   });
 
   const otp = generateOTP();
