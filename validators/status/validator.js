@@ -26,8 +26,8 @@ const reorderStatusesValidator = () => [
       if (!Array.isArray(value)) {
         throw new Error("Status IDs must be an array");
       }
-      if (value.length > 6) {
-        throw new Error("Maximum 6 status options allowed");
+      if (value.length > 10) {
+        throw new Error("Maximum 10 status options allowed");
       }
       return true;
     }),

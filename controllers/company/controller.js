@@ -1,11 +1,11 @@
 const { omitUndefined } = require("mongoose");
 const { TryCatch, ErrorHandler } = require("../../helpers/error");
 const companyModel = require("../../models/company");
+const peopleModel = require("../../models/people");
 const { SendMail } = require("../../config/nodeMailer.config");
 const { generateOTP } = require("../../utils/generateOtp");
 
 const createCompany = TryCatch(async (req, res) => {
-
   const {
     companyname,
     email,
@@ -20,25 +20,54 @@ const createCompany = TryCatch(async (req, res) => {
     comment,
   } = req.body;
 
+  // Enforce per-admin total prospect cap (People + Company) <= 1000
+  try {
+    const creatorId = req.user.id || req.user._id;
+    const [peopleCount, companyCount] = await Promise.all([
+      peopleModel.countDocuments({ creator: creatorId }),
+      companyModel.countDocuments({ creator: creatorId }),
+    ]);
+    if (peopleCount + companyCount >= 1000) {
+      return res.status(403).json({
+        status: 403,
+        success: false,
+        message:
+          "Prospect limit reached for your plan. Please upgrade to add more.",
+      });
+    }
+  } catch (e) {
+    // ignore count errors; don't block creation due to counting failure
+  }
+
   // === VALIDATION: Email & Phone Duplicate ===
   if (email) {
-    const existingByEmail = await companyModel.findOne({ email: email.trim().toLowerCase() });
+    const existingByEmail = await companyModel.findOne({
+      email: email.trim().toLowerCase(),
+    });
     if (existingByEmail) {
-      throw new ErrorHandler("A corporate with this email id is already registered", 409);
+      throw new ErrorHandler(
+        "A corporate with this email id is already registered",
+        409
+      );
     }
   }
 
   if (phone) {
     const existingByPhone = await companyModel.findOne({ phone });
     if (existingByPhone) {
-      throw new ErrorHandler("A corporate with this phone no. is already registered", 409);
+      throw new ErrorHandler(
+        "A corporate with this phone no. is already registered",
+        409
+      );
     }
   }
 
   // === FORMAT NAMES ===
   const formatName = (name = "") => {
     if (!name || !name.trim()) return "";
-    return name.trim().charAt(0).toUpperCase() + name.trim().slice(1).toLowerCase();
+    return (
+      name.trim().charAt(0).toUpperCase() + name.trim().slice(1).toLowerCase()
+    );
   };
 
   const formattedCompanyName = formatName(companyname);
@@ -48,7 +77,7 @@ const createCompany = TryCatch(async (req, res) => {
   const { otp, expiresAt } = generateOTP();
 
   // === CLEAN & FORMAT ADDITIONAL CONTACTS ===
-  const cleanedAdditionalContacts = additionalContacts.map(contact => ({
+  const cleanedAdditionalContacts = additionalContacts.map((contact) => ({
     name: contact.name?.trim() || "",
     phone: contact.phone || "",
     designation: contact.designation?.trim() || "",
@@ -134,21 +163,29 @@ const editCompany = TryCatch(async (req, res) => {
 
   // === 3. Duplicate Check (only if changed) ===
   if (email && email.trim().toLowerCase() !== company.email) {
-    const exists = await companyModel.findOne({ email: email.trim().toLowerCase() });
+    const exists = await companyModel.findOne({
+      email: email.trim().toLowerCase(),
+    });
     if (exists) {
-      throw new ErrorHandler("A corporate with this email id is already registered", 409);
+      throw new ErrorHandler(
+        "A corporate with this email id is already registered",
+        409
+      );
     }
   }
 
   if (phone && phone !== company.phone) {
     const exists = await companyModel.findOne({ phone });
     if (exists) {
-      throw new ErrorHandler("A corporate with this phone no. is already registered", 409);
+      throw new ErrorHandler(
+        "A corporate with this phone no. is already registered",
+        409
+      );
     }
   }
 
   // === 4. Clean Additional Contacts ===
-  const cleanedAdditionalContacts = additionalContacts.map(contact => ({
+  const cleanedAdditionalContacts = additionalContacts.map((contact) => ({
     name: contact.name?.trim() || "",
     phone: contact.phone || "",
     designation: contact.designation?.trim() || "",
@@ -181,11 +218,9 @@ const editCompany = TryCatch(async (req, res) => {
   }
 
   // === 7. Update in DB ===
-  const updatedCompany = await companyModel.findByIdAndUpdate(
-    companyId,
-    updates,
-    { new: true }
-  ).populate("comments.createdBy", "firstname lastname");
+  const updatedCompany = await companyModel
+    .findByIdAndUpdate(companyId, updates, { new: true })
+    .populate("comments.createdBy", "firstname lastname");
 
   res.status(200).json({
     status: 200,
@@ -237,7 +272,9 @@ const CompanyOtpVerification = TryCatch(async (req, res) => {
     return res.status(404).json({ message: "Wrong OTP" });
   }
   await companyModel.findByIdAndUpdate(id, { verify: true });
-  return res.status(200).json({ message: "OTP Verified Successfully", success: true });
+  return res
+    .status(200)
+    .json({ message: "OTP Verified Successfully", success: true });
 });
 
 // Resend Company OTP
@@ -263,7 +300,9 @@ const CompanyResendOTP = TryCatch(async (req, res) => {
 const companyDetails = TryCatch(async (req, res) => {
   const { companyId } = req.body;
 
-  const company = await companyModel.findById(companyId).populate('comments.createdBy', 'firstname lastname');
+  const company = await companyModel
+    .findById(companyId)
+    .populate("comments.createdBy", "firstname lastname");
   if (!company) {
     throw new ErrorHandler("Corporate doesn't exists", 400);
   }
@@ -284,15 +323,21 @@ const companyDetails = TryCatch(async (req, res) => {
 const allCompanies = TryCatch(async (req, res) => {
   const { page = 1, archivedOnly = false } = req.body;
 
-  const archivedFilter = archivedOnly ? { isArchived: true } : { isArchived: false };
+  const archivedFilter = archivedOnly
+    ? { isArchived: true }
+    : { isArchived: false };
 
   let companies = [];
   if (req.user.role === "Super Admin") {
-    companies = await companyModel.find({organization: req.user.organization, ...archivedFilter}).sort({ createdAt: -1 }).populate('creator', 'name');
+    companies = await companyModel
+      .find({ organization: req.user.organization, ...archivedFilter })
+      .sort({ createdAt: -1 })
+      .populate("creator", "name");
   } else {
     companies = await companyModel
       .find({ creator: req.user.id, ...archivedFilter })
-      .sort({ createdAt: -1 }).populate('creator', 'name');
+      .sort({ createdAt: -1 })
+      .populate("creator", "name");
   }
 
   res.status(200).json({
@@ -349,7 +394,9 @@ const getComments = async (req, res) => {
   try {
     const { companyId } = req.params;
 
-    const company = await companyModel.findById(companyId).populate('comments.createdBy', 'firstname lastname');
+    const company = await companyModel
+      .findById(companyId)
+      .populate("comments.createdBy", "firstname lastname");
     if (!company) {
       return res.status(404).json({
         success: false,

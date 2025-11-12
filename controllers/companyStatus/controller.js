@@ -1,24 +1,24 @@
 const { TryCatch, ErrorHandler } = require("../../helpers/error");
 const companyStatusModel = require("../../models/companyStatus");
 
-// Create company status (Admin only)
+// Create company status (Super Admin only)
 const createCompanyStatus = TryCatch(async (req, res) => {
   const { name } = req.body;
-  const { organization, _id: creator } = req.user;
+  const { organization, id: creator, role } = req.user;
 
-  // Check if user is admin
-  if (req.user.role !== "admin") {
-    throw new ErrorHandler("Only admins can create company statuses", 403);
+  // Only Super Admin can create (match Individual behavior)
+  if (role !== "Super Admin") {
+    throw new ErrorHandler("Only Super Admin can create company statuses", 403);
   }
 
-  // Check if organization already has 6 statuses
+  // Check if organization already has 10 statuses
   const existingStatuses = await companyStatusModel.countDocuments({
     organization,
     isActive: true,
   });
 
-  if (existingStatuses >= 6) {
-    throw new ErrorHandler("Maximum 6 statuses allowed per organization", 400);
+  if (existingStatuses >= 10) {
+    throw new ErrorHandler("Maximum 10 statuses allowed per organization", 400);
   }
 
   // Check if status with same name already exists
@@ -65,11 +65,11 @@ const getAllCompanyStatuses = TryCatch(async (req, res) => {
 const updateCompanyStatus = TryCatch(async (req, res) => {
   const { statusId } = req.params;
   const { name } = req.body;
-  const { organization, _id: creator } = req.user;
+  const { organization, id: creator, role } = req.user;
 
-  // Check if user is admin
-  if (req.user.role !== "admin") {
-    throw new ErrorHandler("Only admins can update company statuses", 403);
+  // Only Super Admin can update (match Individual behavior)
+  if (role !== "Super Admin") {
+    throw new ErrorHandler("Only Super Admin can update company statuses", 403);
   }
 
   const status = await companyStatusModel.findOne({
@@ -107,11 +107,11 @@ const updateCompanyStatus = TryCatch(async (req, res) => {
 // Delete company status
 const deleteCompanyStatus = TryCatch(async (req, res) => {
   const { statusId } = req.params;
-  const { organization } = req.user;
+  const { organization, role } = req.user;
 
-  // Check if user is admin
-  if (req.user.role !== "admin") {
-    throw new ErrorHandler("Only admins can delete company statuses", 403);
+  // Only Super Admin can delete (match Individual behavior)
+  if (role !== "Super Admin") {
+    throw new ErrorHandler("Only Super Admin can delete company statuses", 403);
   }
 
   const status = await companyStatusModel.findOne({

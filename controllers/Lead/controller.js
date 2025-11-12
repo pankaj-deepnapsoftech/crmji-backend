@@ -1885,7 +1885,7 @@ const scheduleDemo = TryCatch(async (req, res) => {
         meetingType,
         notes: notes || "",
       },
-      status: "Scheduled Demo",
+      status: "Scheduled Meeting",
     },
     { new: true }
   );

@@ -93,32 +93,29 @@ const peopleSchema = mongoose.Schema(
 );
 
 peopleSchema.pre("save", async function (next) {
-  if (!this.isNew || this.uniqueId) return next();
-  const gen = () =>
-    `IND-${Array.from(
-      { length: 3 },
-      () => Math.floor(Math.random() * 9) + 1
-    ).join("")}`;
   try {
-    let attempts = 0;
-    let candidate = gen();
-    while (attempts < 5) {
-      // eslint-disable-next-line no-await-in-loop
-      const exists = await this.constructor.exists({ uniqueId: candidate });
-      if (!exists) {
-        this.uniqueId = candidate;
-        break;
-      }
-      attempts += 1;
-      candidate = gen();
+    if (!this.isNew || this.uniqueId) return next();
+    if (!this.creator)
+      return next(new Error("creator is required to generate uniqueId"));
+
+    const prefix = "IND-";
+    const latest = await this.constructor
+      .findOne({
+        creator: this.creator,
+        uniqueId: { $regex: `^${prefix}\\d{3}$` },
+      })
+      .sort({ uniqueId: -1 })
+      .select("uniqueId")
+      .lean();
+
+    let nextNum = 1;
+    if (latest?.uniqueId) {
+      const current = parseInt(latest.uniqueId.slice(-3), 10);
+      if (!Number.isNaN(current)) nextNum = current + 1;
     }
-    if (!this.uniqueId) {
-      return next(
-        new Error(
-          "Failed to generate uniqueId for People after multiple attempts"
-        )
-      );
-    }
+
+    const suffix = String(nextNum).padStart(3, "0");
+    this.uniqueId = `${prefix}${suffix}`;
     return next();
   } catch (err) {
     return next(err);
@@ -150,32 +147,6 @@ peopleSchema.pre(
     next();
   }
 );
-
-// Auto-generate sequential uniqueId per organization on save if missing
-peopleSchema.pre("save", async function (next) {
-  try {
-    if (this.uniqueId || !this.organization) return next();
-    const prefix = "IND-";
-    const latest = await this.constructor
-      .findOne({
-        organization: this.organization,
-        uniqueId: { $regex: `^${prefix}\\d{6}$` },
-      })
-      .sort({ uniqueId: -1 })
-      .select("uniqueId")
-      .lean();
-    let nextNum = 1;
-    if (latest?.uniqueId) {
-      const current = parseInt(latest.uniqueId.slice(-6), 10);
-      if (!Number.isNaN(current)) nextNum = current + 1;
-    }
-    const suffix = String(nextNum).padStart(6, "0");
-    this.uniqueId = `${prefix}${suffix}`;
-    next();
-  } catch (err) {
-    next(err);
-  }
-});
 
 peopleSchema.pre(
   "deleteMany",

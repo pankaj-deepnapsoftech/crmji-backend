@@ -43,16 +43,16 @@ const createStatus = TryCatch(async (req, res) => {
     });
   }
 
-  // Check if organization already has 6 statuses
+  // Check if organization already has 10 statuses
   const statusCount = await statusModel.countDocuments({
     organization,
     isActive: true,
   });
 
-  if (statusCount >= 6) {
+  if (statusCount >= 10) {
     return res.status(400).json({
       success: false,
-      message: "Maximum 6 status options allowed per organization",
+      message: "Maximum 10 status options allowed per organization",
     });
   }
 

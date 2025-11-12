@@ -1,6 +1,6 @@
 const mongoose = require("mongoose");
 const customerModel = require("./customer");
-const proformaInvoiceModel=require("./proformaInvoice");
+const proformaInvoiceModel = require("./proformaInvoice");
 const invoiceModel = require("./invoice");
 const leadModel = require("./lead");
 const indiamartLeadModel = require("./indiamart_lead");
@@ -60,7 +60,8 @@ const companySchema = mongoose.Schema(
           if (!v) return true;
           return /^[A-Z0-9]{15}$/.test(v);
         },
-        message: "GST number must be exactly 15 characters (capital letters and numbers only)",
+        message:
+          "GST number must be exactly 15 characters (capital letters and numbers only)",
       },
     },
     address: {
@@ -123,90 +124,76 @@ const companySchema = mongoose.Schema(
     },
     uniqueId: {
       type: String,
-      unique: true,
-      index: true,
     },
   },
   { timestamps: true }
 );
 
-// ==================== ALL HOOKS (UNCHANGED + PRESERVED) ====================
+companySchema.index({ creator: 1, uniqueId: 1 }, { unique: true });
 
-// Hook 1: Generate uniqueId like COR-123
+// Hook: Generate per-admin sequential uniqueId like COR-001, COR-002
 companySchema.pre("save", async function (next) {
-  if (!this.isNew || this.uniqueId) return next();
-  const gen = () => `COR-${Array.from({ length: 3 }, () => Math.floor(Math.random() * 9) + 1).join("")}`;
   try {
-    let attempts = 0;
-    let candidate = gen();
-    while (attempts < 5) {
-      const exists = await this.constructor.exists({ uniqueId: candidate });
-      if (!exists) {
-        this.uniqueId = candidate;
-        break;
-      }
-      attempts += 1;
-      candidate = gen();
+    if (!this.isNew || this.uniqueId) return next();
+    if (!this.creator)
+      return next(new Error("creator is required to generate uniqueId"));
+
+    const prefix = "COR-";
+    const latest = await this.constructor
+      .findOne({
+        creator: this.creator,
+        uniqueId: { $regex: `^${prefix}\\d{3}$` },
+      })
+      .sort({ uniqueId: -1 })
+      .select("uniqueId")
+      .lean();
+
+    let nextNum = 1;
+    if (latest?.uniqueId) {
+      const current = parseInt(latest.uniqueId.slice(-3), 10);
+      if (!Number.isNaN(current)) nextNum = current + 1;
     }
-    if (!this.uniqueId) {
-      return next(new Error("Failed to generate uniqueId for Company after multiple attempts"));
-    }
+
+    const suffix = String(nextNum).padStart(3, "0");
+    this.uniqueId = `${prefix}${suffix}`;
     return next();
   } catch (err) {
     return next(err);
   }
 });
 
-// Hook 2: Auto-generate sequential uniqueId like CORP-000001
-companySchema.pre("save", async function (next) {
-  try {
-    if (this.uniqueId || !this.organization) return next();
-    const prefix = "CORP-";
-    const latest = await this.constructor
-      .findOne({
-        organization: this.organization,
-        uniqueId: { $regex: `^${prefix}\\d{6}$` },
-      })
-      .sort({ uniqueId: -1 })
-      .select("uniqueId")
-      .lean();
-    let nextNum = 1;
-    if (latest?.uniqueId) {
-      const current = parseInt(latest.uniqueId.slice(-6), 10);
-      if (!Number.isNaN(current)) nextNum = current + 1;
-    }
-    const suffix = String(nextNum).padStart(6, "0");
-    this.uniqueId = `${prefix}${suffix}`;
-    next();
-  } catch (err) {
-    next(err);
-  }
-});
-
 // Hook 3: Delete related docs on company delete
-companySchema.pre("deleteOne", { document: true, query: true }, async function (next) {
-  const docToDelete = await this.model.findOne(this.getQuery());
-  if (docToDelete?._id !== undefined) {
-    await customerModel.deleteMany({ company: docToDelete._id });
-    await proformaInvoiceModel.deleteMany({ company: docToDelete._id });
-    await invoiceModel.deleteMany({ company: docToDelete._id });
-    await leadModel.deleteMany({ company: docToDelete._id });
-    await indiamartLeadModel.deleteMany({ company: docToDelete._id });
+companySchema.pre(
+  "deleteOne",
+  { document: true, query: true },
+  async function (next) {
+    const docToDelete = await this.model.findOne(this.getQuery());
+    if (docToDelete?._id !== undefined) {
+      await customerModel.deleteMany({ company: docToDelete._id });
+      await proformaInvoiceModel.deleteMany({ company: docToDelete._id });
+      await invoiceModel.deleteMany({ company: docToDelete._id });
+      await leadModel.deleteMany({ company: docToDelete._id });
+      await indiamartLeadModel.deleteMany({ company: docToDelete._id });
+    }
+    next();
   }
-  next();
-});
+);
 
-companySchema.pre("deleteMany", { document: true, query: true }, async function (next) {
-  const docToDelete = await this.model.findOne(this.getQuery());
-  if (docToDelete?._id !== undefined) {
-    await customerModel.deleteMany({ company: docToDelete._id });
-    await proformaInvoiceModel.deleteMany({ company: docToDelete._id });
-    await invoiceModel.deleteMany({ company: docToDelete._id });
-    await leadModel.deleteMany({ company: docToDelete._id });
-    await indiamartLeadModel.deleteMany({ company: docToDelete._id });
+companySchema.pre(
+  "deleteMany",
+  { document: true, query: true },
+  async function (next) {
+    const docToDelete = await this.model.findOne(this.getQuery());
+    if (docToDelete?._id !== undefined) {
+      await customerModel.deleteMany({ company: docToDelete._id });
+      await proformaInvoiceModel.deleteMany({ company: docToDelete._id });
+      await invoiceModel.deleteMany({ company: docToDelete._id });
+      await leadModel.deleteMany({ company: docToDelete._id });
+      await indiamartLeadModel.deleteMany({ company: docToDelete._id });
+    }
+    next();
   }
-  next();
-});
+);
 
 // Remove the broken pre("create") hook — it's invalid
 // companySchema.pre("create", { document: true, query: true }, async function (next) { ... }

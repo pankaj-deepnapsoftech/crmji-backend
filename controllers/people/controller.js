@@ -76,6 +76,25 @@ const getRemarksForPerson = TryCatch(async (req, res) => {
 const createPeople = TryCatch(async (req, res) => {
   const { firstname, lastname, email, phone, status, comment } = req.body;
 
+  // Enforce per-admin total prospect cap (People + Company) <= 1000
+  try {
+    const creatorId = req.user.id || req.user._id;
+    const [peopleCount, companyCount] = await Promise.all([
+      peopleModel.countDocuments({ creator: creatorId }),
+      require("../../models/company").countDocuments({ creator: creatorId }),
+    ]);
+    if (peopleCount + companyCount >= 1000) {
+      return res.status(403).json({
+        status: 403,
+        success: false,
+        message:
+          "Prospect limit reached for your plan. Please upgrade to add more.",
+      });
+    }
+  } catch (e) {
+    // If counting fails, proceed without blocking to avoid false negatives
+  }
+
   let isExistingPeople = await peopleModel.findOne({ email });
   if (isExistingPeople) {
     throw new Error("Person with this email id already exists", 409);
