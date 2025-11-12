@@ -17,15 +17,15 @@ exports.SendTemplate = async (req, res) => {
         language: {
           code: template_lang,
         },
-        components: [
-          {
-            type: "body",
-            parameters: components,    
-          },
-        ],
+        // components: [
+        //   {
+        //     type: "body",
+        //     parameters: components,    
+        //   },
+        // ],
       },
     };
-
+  
 
     const data = await axios.post(
       "https://graph.facebook.com/v21.0/575068729020861/messages",
@@ -52,7 +52,8 @@ exports.SendTemplate = async (req, res) => {
       data: data.data,
     });
   } catch (error) {
-    res.status(400).json({ message: `message sending error ` });
+    console.log(error)
+    res.status(400).json({ message: error });
   }
 };
 
@@ -81,7 +82,8 @@ exports.totalWhatsapp = async (req,res)=>{
 exports.GetApprovedTemplates = async (req, res) => {
   try {
     const WABA_ID = "1789176135196884";
-   
+    console.log("Token used:", process.env.whatsapp_token);
+
     const response = await axios.get(
       `https://graph.facebook.com/v21.0/${WABA_ID}/message_templates`,
       {
