@@ -274,14 +274,32 @@ const allCustomers = TryCatch(async (req, res) => {
       .sort({ createdAt: -1 })
       .populate("people")
       .populate("company", "companyname email phone")
-      .populate("creator", "name");
+      .populate("creator", "name")
+      .populate({
+        path: "products",
+        select: "name imageUrl category",
+        populate: {
+          path: "category",
+          model: "Product Category",
+          select: "categoryname",
+        },
+      });
   } else {
     customers = await customerModel
       .find({ organization: req.user.organization, creator: req.user.id })
       .sort({ createdAt: -1 })
       .populate("people")
       .populate("company", "companyname email phone")
-      .populate("creator", "name");
+      .populate("creator", "name")
+      .populate({
+        path: "products",
+        select: "name imageUrl category",
+        populate: {
+          path: "category",
+          model: "Product Category",
+          select: "categoryname",
+        },
+      });
   }
 
   const results = customers.map((customer) => {
@@ -306,6 +324,16 @@ const allCustomers = TryCatch(async (req, res) => {
       status: customer?.status,
       creator: customer?.creator.name,
       createdAt: customer?.createdAt,
+      products:
+        Array.isArray(customer?.products) && customer.products.length > 0
+          ? customer.products.map((product) => ({
+              _id: product?._id,
+              name: product?.name,
+              imageUrl: product?.imageUrl,
+              category:
+                product?.category?.categoryname || product?.category || "",
+            }))
+          : [],
     };
   });
 
