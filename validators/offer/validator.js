@@ -5,8 +5,8 @@ const createOfferValidator = ()=>[
     body("lead", "Lead Id field should not be empty").notEmpty(),
     body("startdate", "Start date field should not be empty").notEmpty(),
     body("expiredate", "Expiry date field should not be empty").notEmpty(),
-    body("subtotal", "Sub total field should not be empty").isNumeric().withMessage("Sub total field should be a number"),
-    body("total", "Sub total field should not be empty").isNumeric().withMessage("Sub total field should be a number"),
+    body("subtotal", "Sub total field should not be empty").toFloat().isFloat({min: 0}).withMessage("Sub total field should be a valid number"),
+    body("total", "Sub total field should not be empty").toFloat().isFloat({min: 0}).withMessage("Sub total field should be a valid number"),
     body('products').isArray({min: 1}).withMessage("Products should have atleast 1 product")
 ]
 
@@ -16,8 +16,8 @@ const editOfferValidator = ()=>[
     body("startdate", "Start date field should not be empty").notEmpty(),
     body("expiredate", "End date field should not be empty").notEmpty(),
     body("tax", "Tax field should not be empty").notEmpty(),
-    body("subtotal", "Sub total field should not be empty").isNumeric().withMessage("Sub total field should be a number"),
-    body("total", "Sub total field should not be empty").isNumeric().withMessage("Sub total field should be a number"),
+    body("subtotal", "Sub total field should not be empty").toFloat().isFloat({min: 0}).withMessage("Sub total field should be a valid number"),
+    body("total", "Sub total field should not be empty").toFloat().isFloat({min: 0}).withMessage("Sub total field should be a valid number"),
     body('products').isArray({min: 1}).withMessage("Products should have atleast 1 product")
 ]
 
