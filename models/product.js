@@ -18,7 +18,7 @@ const productSchema = mongoose.Schema(
     },
     model: {
       type: String,
-      required: [true, "Model is a required field"],
+      // required: [true, "Model is a required field"],
     },
     category: {
       type: mongoose.Types.ObjectId,
@@ -27,14 +27,14 @@ const productSchema = mongoose.Schema(
     },
     price: {
       type: String,
-      required: [true, "Price is a required field"],
+      // required: [true, "Price is a required field"],
     },
     description: {
       type: String,
     },
-    ref: {
-      type: String,
-    },
+    // ref: {
+    //   type: String,
+    // },
     imageUrl: {
       type: String,
     },
@@ -44,10 +44,10 @@ const productSchema = mongoose.Schema(
       default: 'Product',
       required: [true, 'Type is a required field']
     },
-    stock: {
-      type: Number,
-      required: [true, 'Stock is a required field']
-    }
+    // stock: {
+    //   type: Number,
+    //   required: [true, 'Stock is a required field']
+    // }
   },
   { timestamps: true }
 );
