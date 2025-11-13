@@ -2298,9 +2298,14 @@ const downloadRIFile = TryCatch(async (req, res) => {
 });
 
 const editScheduleDemo = TryCatch(async (req, res) => {
-  const { leadId, status, remark } = req.body;
+  const { leadId, status, remark, paymentAmount } = req.body;
 
-  console.log("editScheduleDemo called with:", { leadId, status, remark });
+  console.log("editScheduleDemo called with:", {
+    leadId,
+    status,
+    remark,
+    paymentAmount,
+  });
 
   const lead = await leadModel.findById(leadId);
   if (!lead) {
@@ -2319,8 +2324,19 @@ const editScheduleDemo = TryCatch(async (req, res) => {
     status: status,
   };
 
-  if (remark) {
-    updateData["meeting.remark"] = remark;
+  // Prepare remark when Payment Received
+  let finalRemark = remark;
+  if (status === "Payment Received" && paymentAmount) {
+    const amt = Number(paymentAmount);
+    if (!isNaN(amt) && amt > 0) {
+      finalRemark = `${
+        remark ? remark + " | " : ""
+      }Payment Received: Rs ${amt}`;
+    }
+  }
+
+  if (finalRemark) {
+    updateData["meeting.remark"] = finalRemark;
   }
 
   const updatedLead = await leadModel
@@ -2336,6 +2352,7 @@ const editScheduleDemo = TryCatch(async (req, res) => {
   });
 
   let customerCreated = false;
+  let customerUpdatedToPaid = false;
   if (status === "Completed") {
     console.log("Status changed to Completed, creating customer record...");
 
@@ -2375,8 +2392,66 @@ const editScheduleDemo = TryCatch(async (req, res) => {
     }
   }
 
+  // If Payment Received, ensure customer exists, set status and lastPaymentAmount
+  if (status === "Payment Received") {
+    const amt = Number(paymentAmount);
+
+    let customer = null;
+    if (updatedLead.leadtype === "People") {
+      customer = await customerModel.findOne({
+        organization: req.user.organization,
+        people: updatedLead.people,
+      });
+    } else {
+      customer = await customerModel.findOne({
+        organization: req.user.organization,
+        company: updatedLead.company,
+      });
+    }
+
+    if (!customer) {
+      const customerData = {
+        organization: req.user.organization,
+        creator: req.user.id,
+        customertype: updatedLead.leadtype,
+        status: "Payment Received",
+        lastPaymentAmount: !isNaN(amt) && amt > 0 ? amt : undefined,
+        products: updatedLead.products,
+      };
+      if (updatedLead.leadtype === "People")
+        customerData.people = updatedLead.people;
+      else customerData.company = updatedLead.company;
+
+      const newCustomer = await customerModel.create(customerData);
+      console.log("Customer created with Payment Received:", newCustomer._id);
+      customerCreated = true;
+      customerUpdatedToPaid = true;
+    } else {
+      let changed = false;
+      if (customer.status !== "Payment Received") {
+        customer.status = "Payment Received";
+        changed = true;
+      }
+      if (!isNaN(amt) && amt > 0) {
+        customer.lastPaymentAmount = amt;
+        changed = true;
+      }
+      if (changed) {
+        await customer.save();
+        console.log(
+          "Customer updated to Payment Received with amount:",
+          customer._id,
+          amt
+        );
+        customerUpdatedToPaid = true;
+      }
+    }
+  }
+
   const message = customerCreated
     ? "Meeting completed successfully and customer record created!"
+    : status === "Payment Received" && customerUpdatedToPaid
+    ? "Payment recorded and customer updated"
     : "Scheduled Meeting updated successfully";
 
   res.status(200).json({
@@ -2384,6 +2459,10 @@ const editScheduleDemo = TryCatch(async (req, res) => {
     message: message,
     lead: updatedLead,
     customerCreated: customerCreated,
+    customerUpdatedToPaid,
+    lastPaymentAmount: !isNaN(Number(paymentAmount))
+      ? Number(paymentAmount)
+      : undefined,
   });
 });
 
