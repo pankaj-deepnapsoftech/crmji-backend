@@ -254,6 +254,7 @@ const customerDetails = TryCatch(async (req, res) => {
           : customer.company?.phone,
       customertype: customer.customertype,
       status: customer.status,
+      lastPaymentAmount: customer.lastPaymentAmount,
       products: customer.products,
       creator: customer.creator?.name,
       createdAt: customer.createdAt,
@@ -322,6 +323,7 @@ const allCustomers = TryCatch(async (req, res) => {
           : customer.company?.phone,
       customertype: customer?.customertype,
       status: customer?.status,
+      lastPaymentAmount: customer?.lastPaymentAmount,
       creator: customer?.creator.name,
       createdAt: customer?.createdAt,
       products:

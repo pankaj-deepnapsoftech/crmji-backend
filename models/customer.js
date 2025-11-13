@@ -44,6 +44,9 @@ const customerSchema = mongoose.Schema(
       ],
       default: "Deal Done",
     },
+    lastPaymentAmount: {
+      type: Number,
+    },
     products: {
       type: [
         {
