@@ -16,16 +16,17 @@ const getAllStatuses = TryCatch(async (req, res) => {
   });
 });
 
-// Create a new status (Super Admin only)
+// Create a new status (Super Admin & Admin)
 const createStatus = TryCatch(async (req, res) => {
   const { organization, role, id } = req.user;
   const { name } = req.body;
 
-  // Check if user is Super Admin
-  if (role !== "Super Admin") {
+  const canManageStatuses = ["Super Admin", "Admin"].includes(role);
+
+  if (!canManageStatuses) {
     return res.status(403).json({
       success: false,
-      message: "Only Super Admin can create status options",
+      message: "Only Admin users can manage status options",
     });
   }
 
@@ -76,11 +77,12 @@ const updateStatus = TryCatch(async (req, res) => {
   const { statusId } = req.params;
   const { name } = req.body;
 
-  // Check if user is Super Admin
-  if (role !== "Super Admin") {
+  const canManageStatuses = ["Super Admin", "Admin"].includes(role);
+
+  if (!canManageStatuses) {
     return res.status(403).json({
       success: false,
-      message: "Only Super Admin can update status options",
+      message: "Only Admin users can manage status options",
     });
   }
 
@@ -128,11 +130,12 @@ const deleteStatus = TryCatch(async (req, res) => {
   const { organization, role } = req.user;
   const { statusId } = req.params;
 
-  // Check if user is Super Admin
-  if (role !== "Super Admin") {
+  const canManageStatuses = ["Super Admin", "Admin"].includes(role);
+
+  if (!canManageStatuses) {
     return res.status(403).json({
       success: false,
-      message: "Only Super Admin can delete status options",
+      message: "Only Admin users can manage status options",
     });
   }
 
@@ -165,11 +168,12 @@ const reorderStatuses = TryCatch(async (req, res) => {
   const { organization, role } = req.user;
   const { statusIds } = req.body; // Array of status IDs in new order
 
-  // Check if user is Super Admin
-  if (role !== "Super Admin") {
+  const canManageStatuses = ["Super Admin", "Admin"].includes(role);
+
+  if (!canManageStatuses) {
     return res.status(403).json({
       success: false,
-      message: "Only Super Admin can reorder status options",
+      message: "Only Admin users can manage status options",
     });
   }
 
