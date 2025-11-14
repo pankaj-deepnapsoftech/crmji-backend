@@ -2320,6 +2320,30 @@ const editScheduleDemo = TryCatch(async (req, res) => {
     throw new ErrorHandler("You don't have permission to edit this demo", 403);
   }
 
+  // Helper: Next customerId per organization+creator, format CUST-0001
+  const generateNextCustomerIdForCreator = async (
+    organizationId,
+    creatorId
+  ) => {
+    const latest = await customerModel
+      .find({
+        organization: organizationId,
+        creator: creatorId,
+        customerId: { $exists: true },
+      })
+      .sort({ createdAt: -1 })
+      .limit(1);
+
+    if (!latest.length || !latest[0].customerId) return "CUST-0001";
+
+    const lastId = latest[0].customerId; // e.g., CUST-0042
+    const match = lastId.match(/^(CUST-)(\d{4})$/);
+    if (!match) return "CUST-0001";
+    const prefix = match[1];
+    const num = parseInt(match[2], 10) + 1;
+    return `${prefix}${String(num).padStart(4, "0")}`;
+  };
+
   const updateData = {
     status: status,
   };
@@ -2353,42 +2377,53 @@ const editScheduleDemo = TryCatch(async (req, res) => {
 
   let customerCreated = false;
   let customerUpdatedToPaid = false;
+
   if (status === "Completed") {
     console.log("Status changed to Completed, creating customer record...");
 
-    let isExistingCustomer;
+    let existingCustomer;
     if (updatedLead.leadtype === "People") {
-      isExistingCustomer = await customerModel.findOne({
+      existingCustomer = await customerModel.findOne({
         organization: req.user.organization,
         people: updatedLead.people,
       });
     } else {
-      isExistingCustomer = await customerModel.findOne({
+      existingCustomer = await customerModel.findOne({
         organization: req.user.organization,
         company: updatedLead.company,
       });
     }
 
-    if (!isExistingCustomer) {
+    if (!existingCustomer) {
       const customerData = {
         organization: req.user.organization,
         creator: req.user.id,
         customertype: updatedLead.leadtype,
         status: "Deal Done",
         products: updatedLead.products,
+        customerId: await generateNextCustomerIdForCreator(
+          req.user.organization,
+          req.user.id
+        ),
       };
 
-      if (updatedLead.leadtype === "People") {
+      if (updatedLead.leadtype === "People")
         customerData.people = updatedLead.people;
-      } else {
-        customerData.company = updatedLead.company;
-      }
+      else customerData.company = updatedLead.company;
 
       const newCustomer = await customerModel.create(customerData);
       console.log("New customer created:", newCustomer._id);
       customerCreated = true;
     } else {
       console.log("Customer already exists, skipping creation");
+      // Backfill missing customerId if absent
+      if (!existingCustomer.customerId) {
+        existingCustomer.customerId = await generateNextCustomerIdForCreator(
+          req.user.organization,
+          req.user.id
+        );
+        await existingCustomer.save();
+      }
     }
   }
 
@@ -2417,6 +2452,10 @@ const editScheduleDemo = TryCatch(async (req, res) => {
         status: "Payment Received",
         lastPaymentAmount: !isNaN(amt) && amt > 0 ? amt : undefined,
         products: updatedLead.products,
+        customerId: await generateNextCustomerIdForCreator(
+          req.user.organization,
+          req.user.id
+        ),
       };
       if (updatedLead.leadtype === "People")
         customerData.people = updatedLead.people;
@@ -2434,6 +2473,13 @@ const editScheduleDemo = TryCatch(async (req, res) => {
       }
       if (!isNaN(amt) && amt > 0) {
         customer.lastPaymentAmount = amt;
+        changed = true;
+      }
+      if (!customer.customerId) {
+        customer.customerId = await generateNextCustomerIdForCreator(
+          req.user.organization,
+          req.user.id
+        );
         changed = true;
       }
       if (changed) {

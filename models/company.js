@@ -5,6 +5,28 @@ const invoiceModel = require("./invoice");
 const leadModel = require("./lead");
 const indiamartLeadModel = require("./indiamart_lead");
 
+let dropLegacyUniqueIdIndexPromise;
+const dropLegacyUniqueIdIndexIfExists = async (model) => {
+  if (!model?.collection || dropLegacyUniqueIdIndexPromise) {
+    return dropLegacyUniqueIdIndexPromise;
+  }
+
+  dropLegacyUniqueIdIndexPromise = (async () => {
+    try {
+      const exists = await model.collection.indexExists("uniqueId_1");
+      if (exists) {
+        await model.collection.dropIndex("uniqueId_1");
+      }
+    } catch (error) {
+      if (error.codeName !== "IndexNotFound") {
+        console.error("Failed to drop legacy uniqueId_1 index", error);
+      }
+    }
+  })();
+
+  return dropLegacyUniqueIdIndexPromise;
+};
+
 const companySchema = mongoose.Schema(
   {
     organization: {
@@ -134,6 +156,8 @@ companySchema.index({ creator: 1, uniqueId: 1 }, { unique: true });
 // Hook: Generate per-admin sequential uniqueId like COR-001, COR-002
 companySchema.pre("save", async function (next) {
   try {
+    await dropLegacyUniqueIdIndexIfExists(this.constructor);
+
     if (!this.isNew || this.uniqueId) return next();
     if (!this.creator)
       return next(new Error("creator is required to generate uniqueId"));
