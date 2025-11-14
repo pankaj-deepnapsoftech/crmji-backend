@@ -2,6 +2,16 @@ const mongoose = require("mongoose");
 
 const excelSchema = mongoose.Schema(
   {
+    organization: {
+      type: mongoose.Types.ObjectId,
+      ref: "Organization",
+      required: [true, "organization is a required field"],
+    },
+    creator: {
+      type: mongoose.Types.ObjectId,
+      ref: "Admin",
+      required: [true, "creator is a required field"],
+    },
     custumerName: {
       type: String,
       required: true,

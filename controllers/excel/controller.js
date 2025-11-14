@@ -1,4 +1,5 @@
 const express = require("express");
+const mongoose = require("mongoose");
 const Excel = require("../../models/excel");
 const doc = require("pdfkit");
 const csv = require("csvtojson");
@@ -10,7 +11,12 @@ const moment = require("moment"); // Install with `npm install moment`
 // Create a new record
 const createRecord = async (req, res) => {
   try {
-
+    if (!req.user?.organization) {
+      return res.status(401).json({
+        success: false,
+        message: "Unauthorized",
+      });
+    }
 
     const {
       custumerName,
@@ -46,6 +52,8 @@ const createRecord = async (req, res) => {
       : null;
 
     const newRecord = new Excel({
+      organization: req.user.organization,
+      creator: req.user.id,
       custumerName,
       phnNumber,
       contractType: contractType === "Other" ? otherContractType : contractType,
@@ -76,7 +84,13 @@ const createRecord = async (req, res) => {
 // Get all records
 const getAllRecords = async (req, res) => {
   try {
-    const records = await Excel.find();
+    if (!req.user?.organization) {
+      return res.status(401).json({ success: false, message: "Unauthorized" });
+    }
+
+    const records = await Excel.find({
+      organization: req.user.organization,
+    }).sort({ createdAt: -1 });
 
     const formattedRecords = records.map((record) => ({
       _id: record._id,
@@ -106,7 +120,13 @@ const getAllRecords = async (req, res) => {
 // Get a single record by ID
 const getRecordById = async (req, res) => {
   try {
-    const record = await Excel.findById(req.params.id);
+    if (!req.user?.organization) {
+      return res.status(401).json({ success: false, message: "Unauthorized" });
+    }
+    const record = await Excel.findOne({
+      _id: req.params.id,
+      organization: req.user.organization,
+    });
     if (!record) {
       return res
         .status(404)
@@ -122,6 +142,9 @@ const getRecordById = async (req, res) => {
 
 const updateRecord = async (req, res) => {
   try {
+    if (!req.user?.organization) {
+      return res.status(401).json({ success: false, message: "Unauthorized" });
+    }
     const {
       custumerName,
       phnNumber,
@@ -181,8 +204,8 @@ const updateRecord = async (req, res) => {
     }
 
     // Update the record in the database
-    const updatedRecord = await Excel.findByIdAndUpdate(
-      req.params.id,
+    const updatedRecord = await Excel.findOneAndUpdate(
+      { _id: req.params.id, organization: req.user.organization },
       updateData,
       { new: true, runValidators: true }
     );
@@ -211,7 +234,13 @@ const updateRecord = async (req, res) => {
 // Delete a record by ID
 const deleteRecord = async (req, res) => {
   try {
-    const deletedRecord = await Excel.findByIdAndDelete(req.params.id);
+    if (!req.user?.organization) {
+      return res.status(401).json({ success: false, message: "Unauthorized" });
+    }
+    const deletedRecord = await Excel.findOneAndDelete({
+      _id: req.params.id,
+      organization: req.user.organization,
+    });
     if (!deletedRecord) {
       return res
         .status(404)
@@ -225,8 +254,11 @@ const deleteRecord = async (req, res) => {
   }
 };
 
-const DateWiseRecord = async (_req, res) => {
+const DateWiseRecord = async (req, res) => {
   try {
+    if (!req.user?.organization) {
+      return res.status(401).json({ success: false, message: "Unauthorized" });
+    }
     const currentDate = new Date();
     currentDate.setHours(0, 0, 0, 0);
 
@@ -234,11 +266,12 @@ const DateWiseRecord = async (_req, res) => {
     sevenDaysFromNow.setDate(currentDate.getDate() + 7);
 
     const records = await Excel.find({
+      organization: req.user.organization,
       renewalDate: {
         $gte: currentDate,
         $lt: sevenDaysFromNow,
       },
-    });
+    }).sort({ renewalDate: 1 });
 
     return res.status(200).json({
       data: records,
@@ -255,6 +288,9 @@ const DateWiseRecord = async (_req, res) => {
 
 const bulkDeleteRenewals = async (req, res) => {
   try {
+    if (!req.user?.organization) {
+      return res.status(401).json({ success: false, message: "Unauthorized" });
+    }
     const { ids } = req.body; // Array of IDs to delete
 
 
@@ -266,8 +302,12 @@ const bulkDeleteRenewals = async (req, res) => {
       });
     }
 
-    // Delete multiple records using $in operator
-    const deleteResult = await Excel.deleteMany({ _id: { $in: ids } });
+    const objectIds = ids.map((id) => new mongoose.Types.ObjectId(id));
+
+    const deleteResult = await Excel.deleteMany({
+      _id: { $in: objectIds },
+      organization: req.user.organization,
+    });
 
     // Check if any records were deleted
     if (deleteResult.deletedCount === 0) {
@@ -291,6 +331,12 @@ const bulkDeleteRenewals = async (req, res) => {
 // Bulk upload records from a CSV file
 const bulkUpload = async (req, res) => {
   try {
+    if (!req.user?.organization) {
+      return res.status(401).json({
+        success: false,
+        message: "Unauthorized",
+      });
+    }
     if (!req.files || !req.files.excel) {
       return res.status(400).json({
         success: false,
@@ -350,6 +396,8 @@ const bulkUpload = async (req, res) => {
 
     // Process Excel data
     const records = data.map((row) => ({
+      organization: req.user.organization,
+      creator: req.user.id,
       custumerName: row.custumerName || "N/A",
       phnNumber: row.phnNumber || "N/A",
       contractType: row.contractType || "N/A",
@@ -359,7 +407,7 @@ const bulkUpload = async (req, res) => {
       years: row.years || "N/A",
       months: row.months || "N/A",
       mode: row.mode || "N/A",
-      contractAttachment: row.contractAttachment || "N/A",
+      contractAttachment: row.contractAttachment || null,
       renewalDate: parseDate(row.renewalDate), // Parse date
       lastRenewalDate: parseDate(row.lastRenewalDate), // Parse date
       renewalTimes: row.renewalTimes || "N/A",
