@@ -1,7 +1,9 @@
 const { TryCatch, ErrorHandler } = require("../../helpers/error");
+const mongoose = require("mongoose");
 const peopleModel = require("../../models/people");
 const customerModel = require("../../models/customer");
 const companyModel = require("../../models/company");
+const invoiceModel = require("../../models/invoice");
 
 const createCustomer = TryCatch(async (req, res) => {
   const { type, peopleId, companyId } = req.body;
@@ -303,6 +305,45 @@ const allCustomers = TryCatch(async (req, res) => {
       });
   }
 
+  const toObjectId = (id) =>
+    mongoose.Types.ObjectId.isValid(id) ? new mongoose.Types.ObjectId(id) : null;
+
+  const customerIds = customers
+    .map((customer) => toObjectId(customer._id))
+    .filter(Boolean);
+
+  const organizationId = toObjectId(req.user.organization);
+  const creatorId = toObjectId(req.user.id);
+  let invoiceTotalsByCustomer = {};
+
+  if (customerIds.length > 0 && organizationId) {
+    const matchConditions = {
+      organization: organizationId,
+      customer: { $in: customerIds },
+    };
+
+    if (req.user.role !== "Super Admin" && creatorId) {
+      matchConditions.creator = creatorId;
+    }
+
+    const invoiceTotals = await invoiceModel.aggregate([
+      { $match: matchConditions },
+      {
+        $group: {
+          _id: "$customer",
+          totalAmount: { $sum: "$total" },
+        },  
+      },
+    ]);
+
+    invoiceTotalsByCustomer = invoiceTotals.reduce((acc, curr) => {
+      const key = curr._id.toString();
+      const total = typeof curr.totalAmount === "number" ? curr.totalAmount : 0;
+      acc[key] = total;
+      return acc;
+    }, {});
+  }
+
   const results = customers.map((customer) => {
     return {
       _id: customer._id,
@@ -324,6 +365,7 @@ const allCustomers = TryCatch(async (req, res) => {
       customertype: customer?.customertype,
       status: customer?.status,
       lastPaymentAmount: customer?.lastPaymentAmount,
+      totalInvoiceAmount: invoiceTotalsByCustomer[customer._id.toString()] || 0,
       creator: customer?.creator.name,
       createdAt: customer?.createdAt,
       products:

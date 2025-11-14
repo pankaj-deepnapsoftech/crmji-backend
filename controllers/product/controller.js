@@ -8,7 +8,7 @@ const offerModel = require("../../models/offer");
 const leadModel = require("../../models/lead");
 
 const createProduct = TryCatch(async (req, res) => {
-  const { name, categoryId, price, description, ref, imageUrl, model, stock, type } = req.body;
+  const { name, categoryId, price, description, imageUrl, model, type } = req.body;
 
   const isCategoryExists = await productCategoryModel.findById(categoryId);
   if (!isCategoryExists) {
@@ -20,12 +20,10 @@ const createProduct = TryCatch(async (req, res) => {
     category: categoryId,
     description,
     price,
-    ref,
     imageUrl,
     model,
     creator: req.user.id,
     organization: req.user.organization,
-    stock,
     type
   });
 
@@ -38,7 +36,7 @@ const createProduct = TryCatch(async (req, res) => {
 });
 
 const editProduct = TryCatch(async (req, res) => {
-  const { productId, name, categoryId, price, description, ref, model, imageUrl, stock } = req.body;
+  const { productId, name, categoryId, price, description, model, imageUrl  } = req.body;
 
   const isProductExists = await productModel.findById(productId);
   if (!isProductExists) {
@@ -57,10 +55,8 @@ const editProduct = TryCatch(async (req, res) => {
       category: categoryId,
       description,
       price,
-      ref,
       model,
       imageUrl,
-      stock
     },
     { new: true }
   );
@@ -150,11 +146,9 @@ const allProducts = TryCatch(async (req, res) => {
       category: p.category.categoryname,
       price: p.price,
       description: p.description,
-      ref: p.ref,
       imageUrl: p.imageUrl,
       creator: p?.creator?.name,
       createdAt: p?.createdAt,
-      stock: p?.stock
     };
   });
 
