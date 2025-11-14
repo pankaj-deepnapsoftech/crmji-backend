@@ -33,17 +33,25 @@ const createInvoice = TryCatch(async (req, res) => {
   const errorArr = [];
   const productsPromise = products.map(async (product) => {
     const availableProduct = await productModel.findById(product.product);
-    if (availableProduct.stock >= product.quantity) {
-      const updatedStock = await productModel.findByIdAndUpdate(
-        product.product,
-        { stock: availableProduct.stock - product.quantity }
-      );
-      productsPromise.push(updatedStock);
-    } else {
-      errorArr.push(
-        `Only ${availableProduct.stock} units are available of ${availableProduct.name}`
-      );
+    if (!availableProduct) {
+      errorArr.push(`Product not found`);
+      return;
     }
+    
+    // Only check stock if it's defined and is a number
+    if (availableProduct.stock !== undefined && availableProduct.stock !== null && typeof availableProduct.stock === 'number') {
+      if (availableProduct.stock >= product.quantity) {
+        await productModel.findByIdAndUpdate(
+          product.product,
+          { stock: availableProduct.stock - product.quantity }
+        );
+      } else {
+        errorArr.push(
+          `Only ${availableProduct.stock} units are available of ${availableProduct.name}`
+        );
+      }
+    }
+    // If stock is not tracked (undefined/null), skip stock validation and allow the invoice
   });
   await Promise.all(productsPromise);
 
