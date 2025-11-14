@@ -332,7 +332,7 @@ const allCustomers = TryCatch(async (req, res) => {
         $group: {
           _id: "$customer",
           totalAmount: { $sum: "$total" },
-        },
+        },  
       },
     ]);
 
