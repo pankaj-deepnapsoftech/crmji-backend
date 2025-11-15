@@ -302,7 +302,27 @@ const login = TryCatch(async (req, res) => {
 
   const organization = await organizationModel
     .findById(existingUser?.organization)
-    .populate("account");
+    .populate({
+      path: "account",
+      populate: {
+        path: "subscription",
+      },
+    });
+
+  // Check if subscription expired and update account status
+  if (organization?.account?.account_type === "subscription" && organization?.account?.subscription) {
+    const subscription = organization.account.subscription;
+    if (subscription.endDate && new Date(subscription.endDate) < new Date()) {
+      // Subscription expired - update account status to inactive
+      if (organization.account.account_status === "active") {
+        await accountModel.findByIdAndUpdate(
+          organization.account._id,
+          { account_status: "inactive" }
+        );
+        organization.account.account_status = "inactive";
+      }
+    }
+  }
 
     // console.log(existingUser.allowedroutes)
   const trialActive = (
@@ -395,7 +415,27 @@ const loginWithAccessToken = TryCatch(async (req, res, next) => {
 
     const organization = await organizationModel
       .findById(user?.organization)
-      .populate("account");
+      .populate({
+        path: "account",
+        populate: {
+          path: "subscription",
+        },
+      });
+
+    // Check if subscription expired and update account status
+    if (organization?.account?.account_type === "subscription" && organization?.account?.subscription) {
+      const subscription = organization.account.subscription;
+      if (subscription.endDate && new Date(subscription.endDate) < new Date()) {
+        // Subscription expired - update account status to inactive
+        if (organization.account.account_status === "active") {
+          await accountModel.findByIdAndUpdate(
+            organization.account._id,
+            { account_status: "inactive" }
+          );
+          organization.account.account_status = "inactive";
+        }
+      }
+    }
 
     const trialActive = (
       organization?.account?.trial_started &&
@@ -483,13 +523,28 @@ const isAuthenticated = TryCatch(async (req, res, next) => {
 
       const account = await accountModel.findOne({
         organization: user.organization,
-      });
+      }).populate("subscription");
 
       let isTrialEnded = false;
       if (account?.trial_started) {
         const gap = new Date() - new Date(account?.trial_start);
         const days = Math.ceil(gap / (1000 * 3600 * 24));
         isTrialEnded = days > 3;
+      }
+
+      // Check if subscription expired and update account status
+      if (account?.account_type === "subscription" && account?.subscription) {
+        const subscription = account.subscription;
+        if (subscription.endDate && new Date(subscription.endDate) < new Date()) {
+          // Subscription expired - update account status to inactive
+          if (account.account_status === "active") {
+            await accountModel.findByIdAndUpdate(
+              account._id,
+              { account_status: "inactive" }
+            );
+            account.account_status = "inactive";
+          }
+        }
       }
 
       req.user = {

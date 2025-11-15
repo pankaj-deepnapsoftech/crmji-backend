@@ -9,6 +9,8 @@ const { sendEmail } = require("../../helpers/sendEmail");
 const websiteConfigurationModel = require("../../models/websiteConfiguration");
 const settingModel = require("../../models/setting");
 const accountModel = require("../../models/account");
+const subscriptionModel = require("../../models/subscription");
+const getDateDifference = require("../../helpers/getDateDifference");
 
 const create = TryCatch(async (req, res) => {
   const { name, email, phone, password, company, city, employeeCount } =
@@ -501,6 +503,109 @@ const testEmailConfig = TryCatch(async (req, res) => {
   }
 });
 
+// Get subscription/trial days remaining
+const getSubscriptionDays = TryCatch(async (req, res) => {
+  const organizationId = req.user.organization;
+
+  if (!organizationId) {
+    throw new ErrorHandler("Organization not found", 404);
+  }
+
+  const account = await accountModel
+    .findOne({ organization: organizationId })
+    .populate("subscription");
+
+  if (!account) {
+    return res.status(200).json({
+      status: 200,
+      success: true,
+      daysRemaining: 0,
+      accountType: null,
+      message: "No account found",
+    });
+  }
+
+  let daysRemaining = 0;
+  let accountType = account.account_type;
+  let planName = account.account_name || "";
+
+  // Check if it's a trial account
+  if (account.account_type === "trial" && account.trial_started && account.trial_start) {
+    const daysElapsed = getDateDifference(account.trial_start, new Date());
+    daysRemaining = Math.max(0, 3 - daysElapsed); // Trial is 3 days
+    planName = "Free Trial";
+  }
+  // Check if it's a subscription account
+  else if (
+    account.account_type === "subscription" &&
+    account.account_status === "active" &&
+    account.subscription
+  ) {
+    let endDate = null;
+    
+    // If endDate exists and is valid (in future), use it
+    if (account.subscription.endDate) {
+      const checkEndDate = new Date(account.subscription.endDate);
+      const now = new Date();
+      if (checkEndDate > now) {
+        endDate = checkEndDate;
+      }
+    }
+    
+    // If endDate is null or in past, calculate 30 days from startDate or payment date
+    if (!endDate) {
+      const startDate = account.subscription.startDate 
+        ? new Date(account.subscription.startDate)
+        : account.subscription.createdAt 
+        ? new Date(account.subscription.createdAt)
+        : new Date();
+      
+      // Add 30 days for monthly subscription
+      endDate = new Date(startDate);
+      endDate.setDate(endDate.getDate() + 30);
+      
+      // Update the subscription endDate in database for future use
+      if (account.subscription._id) {
+        await subscriptionModel.findByIdAndUpdate(
+          account.subscription._id,
+          { endDate: endDate },
+          { new: true }
+        );
+      }
+    }
+    
+    const now = new Date();
+    const diffTime = endDate - now;
+    daysRemaining = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+    daysRemaining = Math.max(0, daysRemaining); // Ensure non-negative
+    planName = account.account_name || "Monthly Plan";
+    
+    // If subscription expired (daysRemaining === 0), update account status to inactive
+    if (daysRemaining === 0 && account.account_status === "active") {
+      await accountModel.findByIdAndUpdate(
+        account._id,
+        { account_status: "inactive" }
+      );
+      account.account_status = "inactive";
+    }
+  }
+  // Check if it's a lifetime/fulltime account
+  else if (account.account_type === "fulltime" && account.account_status === "active") {
+    daysRemaining = -1; // -1 indicates lifetime/unlimited
+    planName = "Lifetime Plan";
+  }
+
+  return res.status(200).json({
+    status: 200,
+    success: true,
+    daysRemaining,
+    accountType,
+    planName,
+    isActive: account.account_status === "active",
+    trialStarted: account.trial_started || false,
+  });
+});
+
 module.exports = {
   create,
   verifyOTP,
@@ -512,4 +617,5 @@ module.exports = {
   isAuthenticatedOrganization,
   activateTrialAccount,
   testEmailConfig,
+  getSubscriptionDays,
 };

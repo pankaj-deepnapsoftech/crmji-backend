@@ -1,6 +1,7 @@
 const jwt = require("jsonwebtoken");
 const accountModel = require("../models/account");
 const adminModel = require("../models/admin");
+const subscriptionModel = require("../models/subscription");
 const { TryCatch } = require("./error");
 
 const checkAccess = TryCatch(async (req, res, next) => {
@@ -20,12 +21,28 @@ const checkAccess = TryCatch(async (req, res, next) => {
         if (verified && verified.iat < curr && verified.exp > curr) {
           const userDoc = await adminModel.findById(verified._id);
           if (userDoc) {
-            const account = await accountModel.findOne({ organization: userDoc.organization });
+            const account = await accountModel.findOne({ organization: userDoc.organization })
+              .populate("subscription");
             let isTrialEnded = false;
             if (account?.trial_started) {
               const gap = new Date() - new Date(account?.trial_start);
               const days = Math.ceil(gap / (1000 * 3600 * 24));
               isTrialEnded = days > 3;
+            }
+
+            // Check if subscription expired and update account status
+            if (account?.account_type === "subscription" && account?.subscription) {
+              const subscription = account.subscription;
+              if (subscription.endDate && new Date(subscription.endDate) < new Date()) {
+                // Subscription expired - update account status to inactive
+                if (account.account_status === "active") {
+                  await accountModel.findByIdAndUpdate(
+                    account._id,
+                    { account_status: "inactive" }
+                  );
+                  account.account_status = "inactive";
+                }
+              }
             }
 
             req.user = {
@@ -64,13 +81,16 @@ const checkAccess = TryCatch(async (req, res, next) => {
     req.user.allowedroutes.includes(route)
   ) {
     next();
+  } else if (trial_routes.includes(route)) {
+    // Allow access to free routes even if subscription expired
+    next();
   } else {
-    // res.status(401).json({
-    //   status: 401,
-    //   success: false,
-    //   message: `You don't have access to ${route} route.`,
-    // });
-    next(); // Allow access instead of blocking
+    // Subscription expired or no access - block access
+    return res.status(403).json({
+      status: 403,
+      success: false,
+      message: `You don't have access to ${route} route. Please upgrade your subscription to continue.`,
+    });
   }
 });
 
