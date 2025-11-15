@@ -2,27 +2,40 @@
 const peopleModel = require('../models/people');   // <-- adjust path if needed
 
 /**
- * Generates the next IND-xxx id.
- * - Finds the highest number that already exists
+ * Generates the next IND-xxx id per creator/admin.
+ * - Finds the highest number that already exists for the specific creator
  * - Increments it by 1
- * - Returns padded string: IND-001, IND-010, etc.
+ * - Returns padded string: IND-001, IND-002, etc.
+ * - Each creator/admin starts from IND-001 independently
  */
-const generateUniqueId = async () => {
-  // Find the document with the highest numeric suffix
+const generateUniqueId = async (creatorId) => {
+  if (!creatorId) {
+    throw new Error('creatorId is required to generate uniqueId');
+  }
+
+  // Find the document with the highest numeric suffix for this specific creator
   const last = await peopleModel
-    .findOne({ uniqueId: { $regex: /^IND-\d+$/ } })
+    .findOne({
+      creator: creatorId,
+      uniqueId: { $regex: /^IND-\d{3}$/ }
+    })
     .sort({ uniqueId: -1 })
     .select('uniqueId')
     .lean();
 
   let nextNumber = 1;
   if (last && last.uniqueId) {
-    const match = last.uniqueId.match(/^IND-(\d+)$/);
-    if (match) nextNumber = parseInt(match[1], 10) + 1;
+    const match = last.uniqueId.match(/^IND-(\d{3})$/);
+    if (match) {
+      const currentNum = parseInt(match[1], 10);
+      if (!Number.isNaN(currentNum)) {
+        nextNumber = currentNum + 1;
+      }
+    }
   }
 
-  // Pad to at least 3 digits (001, 010, 100, …)
+  // Pad to 3 digits (001, 002, 010, 100, …)
   return `IND-${String(nextNumber).padStart(3, '0')}`;
 };
 
-module.exports = generateUniqueId;
+module.exports = generateUniqueId;  

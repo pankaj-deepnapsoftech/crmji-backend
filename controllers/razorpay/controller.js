@@ -143,6 +143,27 @@ const paymentVerfication = TryCatch(async (req, res) => {
     // Only proceed if payment is successful
     subscription.razorpayPaymentId = razorpay_payment_id;
     subscription.status = 'active';
+    
+    // Update endDate if not set or if it's in the past
+    // For monthly subscription, set endDate to 30 days from startDate or payment date
+    if (!subscription.endDate || new Date(subscription.endDate) <= new Date()) {
+      const startDate = subscription.startDate 
+        ? new Date(subscription.startDate)
+        : subscription.createdAt 
+        ? new Date(subscription.createdAt)
+        : new Date();
+      
+      // Set endDate to 30 days from startDate for monthly plan
+      const endDate = new Date(startDate);
+      endDate.setDate(endDate.getDate() + 30);
+      subscription.endDate = endDate;
+    }
+    
+    // If startDate is not set, set it to current date
+    if (!subscription.startDate) {
+      subscription.startDate = new Date();
+    }
+    
     await subscription.save();
 
     await accountModel.findOneAndUpdate(

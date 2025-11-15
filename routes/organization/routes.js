@@ -1,5 +1,6 @@
 const express = require('express');
-const { create, verifyOTP, login, loginWithAccessToken, getOTP, passwordResetOTPVerify, resetPassword,activateTrialAccount, isAuthenticatedOrganization, testEmailConfig } = require('../../controllers/organization/controller');
+const { create, verifyOTP, login, loginWithAccessToken, getOTP, passwordResetOTPVerify, resetPassword,activateTrialAccount, isAuthenticatedOrganization, testEmailConfig, getSubscriptionDays } = require('../../controllers/organization/controller');
+const { isAuthenticated } = require('../../controllers/auth/controller');
 const { chatimage } = require('../../utils/multer');
 const { createOrganizationValidator, validateHandler, verifyOTPValidator, loginValidator, getOTPValidator } = require('../../validators/organization/validator');
 const { passwordResetTokenValidator, resetPasswordValidator} = require('../../validators/auth/validator');
@@ -15,5 +16,6 @@ router.post('/password-reset-token', passwordResetTokenValidator(), validateHand
 router.post('/reset-password', resetPasswordValidator(), validateHandler, resetPassword);
 router.get('/trial-account',isAuthenticatedOrganization, activateTrialAccount);
 router.post('/test-email', testEmailConfig); // Test email configuration
+router.get('/subscription-days', isAuthenticated, getSubscriptionDays); // Get subscription/trial days remaining (for admin users)
 
 module.exports = router;

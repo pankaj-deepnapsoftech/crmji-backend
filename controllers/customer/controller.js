@@ -236,9 +236,6 @@ const customerDetails = TryCatch(async (req, res) => {
     throw new Error("You are not allowed to access this customer", 401);
   }
 
-  // Fetch invoice data for this customer
-  const invoice = await invoiceModel.findOne({ customer: customerId }).sort({ createdAt: -1 });
-
   res.status(200).json({
     status: 200,
     success: true,
@@ -260,8 +257,6 @@ const customerDetails = TryCatch(async (req, res) => {
       customertype: customer.customertype,
       status: customer.status,
       lastPaymentAmount: customer.lastPaymentAmount,
-      saleDate: invoice?.startdate || null,
-      deliveryDate: invoice?.expiredate || null,
       products: customer.products,
       creator: customer.creator?.name,
       createdAt: customer.createdAt,
@@ -320,7 +315,6 @@ const allCustomers = TryCatch(async (req, res) => {
   const organizationId = toObjectId(req.user.organization);
   const creatorId = toObjectId(req.user.id);
   let invoiceTotalsByCustomer = {};
-  let invoiceDatesByCustomer = {};
 
   if (customerIds.length > 0 && organizationId) {
     const matchConditions = {
@@ -338,33 +332,27 @@ const allCustomers = TryCatch(async (req, res) => {
         $group: {
           _id: "$customer",
           totalAmount: { $sum: "$total" },
-          latestStartDate: { $max: "$startdate" },
-          latestExpireDate: { $max: "$expiredate" },
-        },
+        },  
       },
     ]);
 
-    invoiceTotals.forEach((invoice) => {
-      const key = invoice._id.toString();
-      const total = typeof invoice.totalAmount === "number" ? invoice.totalAmount : 0;
-      invoiceTotalsByCustomer[key] = total;
-      invoiceDatesByCustomer[key] = {
-        saleDate: invoice.latestStartDate || null,
-        deliveryDate: invoice.latestExpireDate || null,
-      };
-    });
+    invoiceTotalsByCustomer = invoiceTotals.reduce((acc, curr) => {
+      const key = curr._id.toString();
+      const total = typeof curr.totalAmount === "number" ? curr.totalAmount : 0;
+      acc[key] = total;
+      return acc;
+    }, {});
   }
 
   const results = customers.map((customer) => {
-    const customerDates = invoiceDatesByCustomer[customer._id.toString()] || { saleDate: null, deliveryDate: null };
     return {
       _id: customer._id,
       uniqueId: customer.customerId,
       name:
         customer.people !== undefined
           ? customer?.people?.firstname +
-          " " +
-          (customer?.people?.lastname || "")
+            " " +
+            (customer?.people?.lastname || "")
           : customer.company?.companyname,
       email:
         customer.people !== undefined
@@ -378,19 +366,17 @@ const allCustomers = TryCatch(async (req, res) => {
       status: customer?.status,
       lastPaymentAmount: customer?.lastPaymentAmount,
       totalInvoiceAmount: invoiceTotalsByCustomer[customer._id.toString()] || 0,
-      saleDate: customerDates.saleDate,
-      deliveryDate: customerDates.deliveryDate,
       creator: customer?.creator.name,
       createdAt: customer?.createdAt,
       products:
         Array.isArray(customer?.products) && customer.products.length > 0
           ? customer.products.map((product) => ({
-            _id: product?._id,
-            name: product?.name,
-            imageUrl: product?.imageUrl,
-            category:
-              product?.category?.categoryname || product?.category || "",
-          }))
+              _id: product?._id,
+              name: product?.name,
+              imageUrl: product?.imageUrl,
+              category:
+                product?.category?.categoryname || product?.category || "",
+            }))
           : [],
     };
   });
