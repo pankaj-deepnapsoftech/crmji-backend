@@ -8,6 +8,8 @@ const paymentModel = require("../../models/payment");
 const peopleModel = require("../../models/people");
 const proformaInvoiceModel = require("../../models/proformaInvoice");
 const { generateOTP } = require("../../utils/generateOtp");
+const generateUniqueId = require('../../utils/generateUniqueId');
+
 
 // Add remark to a person
 const addRemarkToPerson = TryCatch(async (req, res) => {
@@ -76,7 +78,7 @@ const getRemarksForPerson = TryCatch(async (req, res) => {
 const createPeople = TryCatch(async (req, res) => {
   const { firstname, lastname, email, phone, status, comment } = req.body;
 
-  // Enforce per-admin total prospect cap (People + Company) <= 1000
+  // ────── prospect-cap check ──────
   try {
     const creatorId = req.user.id || req.user._id;
     const [peopleCount, companyCount] = await Promise.all([
@@ -85,40 +87,38 @@ const createPeople = TryCatch(async (req, res) => {
     ]);
     if (peopleCount + companyCount >= 1000) {
       return res.status(403).json({
-        status: 403,
         success: false,
-        message:
-          "Prospect limit reached for your plan. Please upgrade to add more.",
+        message: "Prospect limit reached for your plan. Please upgrade to add more.",
       });
     }
-  } catch (e) {
-    // If counting fails, proceed without blocking to avoid false negatives
-  }
+  } catch (e) {}
 
-  let isExistingPeople = await peopleModel.findOne({ email });
-  if (isExistingPeople) {
+  // ────── duplicate email / phone ──────
+  if (await peopleModel.findOne({ email }))
     throw new Error("Person with this email id already exists", 409);
-  }
-
-  isExistingPeople = await peopleModel.findOne({ phone });
-  if (isExistingPeople) {
+  if (await peopleModel.findOne({ phone }))
     throw new Error("Person with this phone no. already exists", 409);
-  }
 
-  const formatName = (name = "") =>
-    name.charAt(0).toUpperCase() + name.slice(1).toLowerCase();
-
+  // ────── format names ──────
+  const formatName = (n = "") =>
+    n.trim() ? n.charAt(0).toUpperCase() + n.slice(1).toLowerCase() : "";
   const formattedFirstname = formatName(firstname);
-  const formattedLastname = formatName(lastname);
+  const formattedLastname  = formatName(lastname);
 
+  // ────── OTP ──────
   const { otp, expiresAt } = generateOTP();
 
+  // ────── **GENERATE IND-xxx** ──────
+  const uniqueId = await generateUniqueId();   // <-- async!
+
+  // ────── send OTP mail ──────
   SendMail(
     "OtpVerification.ejs",
     { userName: formattedFirstname, otp },
     { email, subject: "OTP Verification" }
   );
 
+  // ────── create document ──────
   const person = await peopleModel.create({
     organization: req.user.organization,
     creator: req.user.id,
@@ -132,10 +132,10 @@ const createPeople = TryCatch(async (req, res) => {
     otp,
     expiry: expiresAt,
     verify: false,
+    uniqueId,                 // <-- IND-001, IND-002, …
   });
 
-  res.status(200).json({
-    status: 200,
+  res.status(201).json({
     success: true,
     message: "Person has been created successfully",
     person,
