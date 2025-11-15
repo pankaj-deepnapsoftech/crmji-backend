@@ -37,7 +37,27 @@ const {
 const { checkAccess } = require("../../helpers/checkAccess");
 const { upload } = require("../../utils/multer");
 const { isAuthenticated } = require("../../controllers/auth/controller");
+const leadsStatus = require("../../models/leadsStatus");
+const { insertDefaultLeadStatuses } = require("../../helpers/leadStatusHelper");
 const router = express.Router();
+
+
+
+
+
+router.get("/status-list", checkAccess, async (req, res) => {
+
+  await insertDefaultLeadStatuses(req.user.organization); 
+
+  const statuses = await leadsStatus.find({
+    organization: req.user.organization
+  }).sort({ createdAt: 1 });
+
+  res.status(200).json({
+    success: true,
+    statusList: statuses.map(s => s.status)
+  });
+});
 
 router.post(
   "/create-lead",
@@ -114,5 +134,37 @@ router.post("/upload-ri", isAuthenticated, checkAccess, uploadRIFile);
 // Comment routes
 router.post("/add-comment", isAuthenticated, checkAccess, addComment);
 router.get("/comments/:leadId", isAuthenticated, checkAccess, getComments);
+
+
+
+
+router.post("/add-status", checkAccess, async (req, res) => {
+  const { status } = req.body;
+
+  if (!status) {
+    return res.status(400).json({ success: false, message: "Status required" });
+  }
+
+  const exists = await leadsStatus.findOne({
+    status,
+    organization: req.user.organization
+  });
+
+  if (exists) {
+    return res.status(400).json({ success: false, message: "Status already exists" });
+  }
+
+  const newStatus = await leadsStatus.create({
+    status,
+    organization: req.user.organization,
+    isDefault: false
+  });
+
+  res.status(200).json({
+    success: true,
+    message: "Status added",
+    status: newStatus
+  });
+});
 
 module.exports = router;

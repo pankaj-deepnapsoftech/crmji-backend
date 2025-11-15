@@ -19,6 +19,7 @@ const { parse } = require("json2csv");
 const path = require("path");
 const sendWhatsappTemplate = require("../../utils/sendWhatsappTemplate");
 const smsTemplateModel = require("../../models/smsTemplate");
+const { insertDefaultLeadStatuses } = require("../../helpers/leadStatusHelper");
 
 const createLead = TryCatch(async (req, res) => {
   const {
@@ -39,9 +40,15 @@ const createLead = TryCatch(async (req, res) => {
   } = req.body;
   const demoPdfToSave = demoPdf || (req.file ? req.file.path : null);
 
+  // ------------------ ADD THIS LINE ------------------
+  // Ensure default lead statuses exist for this organization
+  await insertDefaultLeadStatuses(req.user.organization);
+  // ---------------------------------------------------
+
   const websiteCofiguration = await websiteConfigurationModel
     .findOne({ organization: req.user.organization })
     .populate("organization");
+
 
   const {
     sms_api_key,

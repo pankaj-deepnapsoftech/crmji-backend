@@ -21,21 +21,21 @@ const leadSchema = mongoose.Schema(
     },
     status: {
       type: String,
-      enum: [
-        "New",
-        "Assigned",
-        "Meeting Scheduled",
-        "Scheduled Meeting",
-        "Meeting Completed",
-        "Meeting Completed",
-        "In Negotiation",
-        "Deal on Hold",
-        "Deal Won",
-        "Deal Lost",
-        "Deal Done",
-      ],
-      default: "Meeting Scheduled",
+      // enum: [
+      //   "New",
+      //   "Assigned",
+      //   "Follow Up",
+      //   "Meeting Scheduled",
+      //   "Meeting Completed",
+      //   "In Negotiation",
+      //   "Deal on Hold",
+      //   "Deal Won",
+      //   "Deal Lost",
+      //   "Deal Done"
+      // ],
+      default: "New"
     },
+
     source: {
       type: String,
       enum: [
@@ -140,6 +140,7 @@ const leadSchema = mongoose.Schema(
         },
       },
     ],
+
   },
 
   { timestamps: true }
