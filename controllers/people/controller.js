@@ -109,7 +109,9 @@ const createPeople = TryCatch(async (req, res) => {
   const { otp, expiresAt } = generateOTP();
 
   // ────── **GENERATE IND-xxx** ──────
-  const uniqueId = await generateUniqueId();   // <-- async!
+  // Generate uniqueId based on creator - each admin starts from IND-001
+  const creatorId = req.user.id || req.user._id;
+  const uniqueId = await generateUniqueId(creatorId);   // <-- async!
 
   // ────── send OTP mail ──────
   SendMail(
