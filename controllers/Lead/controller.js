@@ -1330,16 +1330,14 @@ const leadSummary = TryCatch(async (req, res) => {
           statusCount: [
             {
               $group: {
-                _id: "$status",
-                count: {
-                  $sum: 1,
-                },
+                _id: { $ifNull: [ "$status", "Unknown" ] },
+                count: { $sum: 1 },
               },
             },
             {
               $project: {
                 _id: 0,
-                k: "$_id",
+                k: { $ifNull: [ "$_id", "Unknown" ] },
                 v: "$count",
               },
             },
@@ -1362,8 +1360,8 @@ const leadSummary = TryCatch(async (req, res) => {
         $facet: {
           totalCount: [{ $group: { _id: null, count: { $sum: 1 } } }],
           statusCount: [
-            { $group: { _id: "$status", count: { $sum: 1 } } },
-            { $project: { _id: 0, k: "$_id", v: "$count" } },
+            { $group: { _id: { $ifNull: [ "$status", "Unknown" ] }, count: { $sum: 1 } } },
+            { $project: { _id: 0, k: { $ifNull: [ "$_id", "Unknown" ] }, v: "$count" } },
           ],
         },
       },

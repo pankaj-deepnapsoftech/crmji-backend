@@ -33,7 +33,7 @@ const leadSchema = mongoose.Schema(
       //   "Deal Lost",
       //   "Deal Done"
       // ],
-      default: "New"
+      // default: "New"
     },
 
     source: {
