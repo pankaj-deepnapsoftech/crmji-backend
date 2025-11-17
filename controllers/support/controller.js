@@ -181,7 +181,7 @@ const supportSummary = TryCatch(async (req, res) => {
           {
             $project: {
               _id: 0,
-              k: "$_id",
+              k: { $ifNull: ["$_id", "No Purpose"] },
               v: "$count",
             },
           },
@@ -198,7 +198,7 @@ const supportSummary = TryCatch(async (req, res) => {
                 _id: "$_id.purpose",
                 statuses: {
                   $push: {
-                    k: "$_id.status",
+                    k: { $ifNull: ["$_id.status", "No Status"] },
                     v: "$count"
                   }
                 }
@@ -212,7 +212,7 @@ const supportSummary = TryCatch(async (req, res) => {
             {
               $project: {
                 _id: 0,
-                k: "$_id",
+                k: { $ifNull: ["$_id", "No Purpose"] },
                 v: '$statuses'
               }
             }
