@@ -67,8 +67,8 @@ const checkAccess = TryCatch(async (req, res, next) => {
     } catch (_) {}
   }
 
-  const open_routes = ["status"]; // Routes everyone with valid token can hit
-  const trial_routes = ["dashboard", "people", "company", "lead", "status"];
+  const open_routes = ["status", "company-status"]; // Routes everyone with valid token can hit
+  const trial_routes = ["dashboard", "people", "company", "lead", "status", "company-status"];
 
   if (open_routes.includes(route)) {
     return next();
