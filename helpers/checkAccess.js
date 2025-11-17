@@ -5,12 +5,16 @@ const subscriptionModel = require("../models/subscription");
 const { TryCatch } = require("./error");
 
 const checkAccess = TryCatch(async (req, res, next) => {
-  // Determine the base route segment (e.g., 'dashboard', 'offer', 'invoice')
+  // Determine the base route segment (e.g., 'dashboard', 'offer', 'invoice', 'people', 'company')
   // Using baseUrl is more reliable for mounted routers
-  const route = (req.baseUrl || req.originalUrl || '/')
+  // For routes like /api/people or /api/company, we need to extract 'people' or 'company' (index 1)
+  // For routes like /api/dashboard, we need to extract 'dashboard' (index 1)
+  const urlPath = (req.baseUrl || req.originalUrl || '/')
     .split('?')[0]
     .split('/')
-    .filter(Boolean)[0] || '';
+    .filter(Boolean);
+  // Get the route name (second segment after /api/, or first if no /api/ prefix)
+  const route = urlPath.length > 1 && urlPath[0] === 'api' ? urlPath[1] : (urlPath[0] || '');
   // If req.user is missing, try minimal auth here so checks can work
   if (!req.user) {
     try {

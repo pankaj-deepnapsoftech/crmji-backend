@@ -65,6 +65,7 @@ const allowedOrigins = [
   "https://crmdemo.deepmart.shop",
   "https://crmdemoapi.deepmart.shop",
   "https://subscription.deepnapsoftech.com",
+  "https://crminternal.itsybizz.com",
 ];
 
 const corsOptions = {
