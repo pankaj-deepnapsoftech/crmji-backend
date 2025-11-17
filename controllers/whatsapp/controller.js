@@ -28,7 +28,7 @@ exports.SendTemplate = async (req, res) => {
   
 
     const data = await axios.post(
-      "https://graph.facebook.com/v21.0/575068729020861/messages",
+      `https://graph.facebook.com/v21.0/${process.env.WHATSAPP_PHONE_NUMBER_ID || "575068729020861"}/messages`,
       templateData,
       {
         headers: {
@@ -52,8 +52,16 @@ exports.SendTemplate = async (req, res) => {
       data: data.data,
     });
   } catch (error) {
-    console.log(error)
-    res.status(400).json({ message: error });
+    const fbErr = error.response?.data?.error;
+    if (fbErr?.code === 190) {
+      return res.status(401).json({
+        success: false,
+        message: "Facebook token invalid or expired. Please reauthenticate or update whatsapp_token.",
+        error: fbErr,
+      });
+    }
+    console.log("SendTemplate error:", error.response?.data || error.message);
+    res.status(400).json({ message: error.response?.data || error.message });
   }
 };
 
@@ -81,8 +89,7 @@ exports.totalWhatsapp = async (req,res)=>{
 
 exports.GetApprovedTemplates = async (req, res) => {
   try {
-    const WABA_ID = "1789176135196884";
-    console.log("Token used:", process.env.whatsapp_token);
+    const WABA_ID = process.env.WHATSAPP_WABA_ID || "1789176135196884";
 
     const response = await axios.get(
       `https://graph.facebook.com/v21.0/${WABA_ID}/message_templates`,
@@ -107,6 +114,14 @@ exports.GetApprovedTemplates = async (req, res) => {
       data: response.data.data,
     });
   } catch (error) {
+    const fbErr = error.response?.data?.error;
+    if (fbErr?.code === 190) {
+      return res.status(401).json({
+        success: false,
+        message: "Facebook token invalid or expired. Please reauthenticate or update whatsapp_token.",
+        error: fbErr,
+      });
+    }
     console.error("Error fetching approved templates:", error.response?.data || error.message);
     res.status(400).json({
       success: false,
