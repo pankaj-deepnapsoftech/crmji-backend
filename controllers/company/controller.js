@@ -154,9 +154,19 @@ const editCompany = TryCatch(async (req, res) => {
   }
 
   // === 2. Permission Check ===
+  // Check if company belongs to the same organization
+  if (company.organization.toString() !== req.user.organization.toString()) {
+    throw new ErrorHandler("You are not allowed to edit this corporate", 401);
+  }
+
+  // Allow edit if:
+  // 1. User is Super Admin, OR
+  // 2. User is the creator, OR
+  // 3. User has "company" route access (admin granted access)
   if (
     req.user.role !== "Super Admin" &&
-    company.creator.toString() !== req.user.id.toString()
+    company.creator.toString() !== req.user.id.toString() &&
+    !req.user.allowedroutes?.includes("company")
   ) {
     throw new ErrorHandler("You are not allowed to edit this corporate", 401);
   }
@@ -238,9 +248,19 @@ const deleteCompany = TryCatch(async (req, res) => {
     throw new ErrorHandler("Corporate not found", 404);
   }
 
+  // Check if company belongs to the same organization
+  if (company.organization.toString() !== req.user.organization.toString()) {
+    throw new Error("You are not allowed to delete this corporate", 401);
+  }
+
+  // Allow delete if:
+  // 1. User is Super Admin, OR
+  // 2. User is the creator, OR
+  // 3. User has "company" route access (admin granted access)
   if (
     req.user.role !== "Super Admin" &&
-    company.creator.toString() !== req.user.id.toString()
+    company.creator.toString() !== req.user.id.toString() &&
+    !req.user.allowedroutes?.includes("company")
   ) {
     throw new Error("You are not allowed to delete this corporate", 401);
   }
@@ -306,9 +326,20 @@ const companyDetails = TryCatch(async (req, res) => {
   if (!company) {
     throw new ErrorHandler("Corporate doesn't exists", 400);
   }
+
+  // Check if company belongs to the same organization
+  if (company.organization.toString() !== req.user.organization.toString()) {
+    throw new Error("You are not allowed to access this corporate", 401);
+  }
+
+  // Allow access if:
+  // 1. User is Super Admin, OR
+  // 2. User is the creator, OR
+  // 3. User has "company" route access (admin granted access)
   if (
     req.user.role !== "Super Admin" &&
-    company.creator.toString() !== req.user.id.toString()
+    company.creator.toString() !== req.user.id.toString() &&
+    !req.user.allowedroutes?.includes("company")
   ) {
     throw new Error("You are not allowed to access this corporate", 401);
   }

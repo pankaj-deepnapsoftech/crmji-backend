@@ -53,14 +53,52 @@ const createSubscription = TryCatch(async (req, res) => {
     ? Number(quantity)
     : (Number(organization?.employeeCount) > 0 ? Number(organization.employeeCount) : 1);
 
+  // Fetch plan details to get base amount
+  let plan;
+  try {
+    plan = await instance.plans.fetch(plan_id);
+  } catch (err) {
+    console.error('Razorpay fetch plan error:', err?.message || err);
+    throw new Error(err?.message || 'Failed to fetch plan details');
+  }
+
+  // Calculate GST (18%) on the base amount
+  const baseAmount = plan.item.amount; // Amount in paise
+  const gstAmount = Math.round(baseAmount * 0.18); // 18% GST in paise
+  const totalAmountWithGST = baseAmount + gstAmount;
+
+  // Create addon for GST
+  let gstAddon;
+  try {
+    gstAddon = await instance.addons.create({
+      item: {
+        name: "GST (18%)",
+        amount: gstAmount,
+        currency: "INR",
+        description: "18% GST on subscription"
+      }
+    });
+  } catch (err) {
+    console.error('Razorpay create addon error:', err?.message || err);
+    // If addon creation fails, we'll proceed without it
+    // The plan amount will need to be updated in Razorpay dashboard to include GST
+  }
+
   let subscription;
   try {
-    subscription = await instance.subscriptions.create({
+    const subscriptionParams = {
       plan_id,
       customer_notify: 1,
       total_count: 240,
       quantity: normalizedQuantity,
-    });
+    };
+
+    // Add addon if created successfully
+    if (gstAddon && gstAddon.id) {
+      subscriptionParams.addons = [gstAddon.id];
+    }
+
+    subscription = await instance.subscriptions.create(subscriptionParams);
   } catch (err) {
     console.error('Razorpay create subscription error:', err?.message || err);
     throw new Error(err?.message || 'Failed to create subscription');

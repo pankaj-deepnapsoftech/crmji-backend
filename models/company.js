@@ -12,15 +12,28 @@ const dropLegacyUniqueIdIndexIfExists = async (model) => {
   }
 
   dropLegacyUniqueIdIndexPromise = (async () => {
+    const legacyIndexNames = [
+      "uniqueId_1",
+      "organization_1_uniqueId_1",
+      "organization_1_uniqueid_1",
+      "creator_1_uniqueId_1",
+    ];
+
     try {
-      const exists = await model.collection.indexExists("uniqueId_1");
-      if (exists) {
-        await model.collection.dropIndex("uniqueId_1");
+      for (const indexName of legacyIndexNames) {
+        try {
+          const exists = await model.collection.indexExists(indexName);
+          if (exists) {
+            await model.collection.dropIndex(indexName);
+          }
+        } catch (error) {
+          if (error.codeName !== "IndexNotFound") {
+            console.error(`Failed to drop legacy index ${indexName}`, error);
+          }
+        }
       }
     } catch (error) {
-      if (error.codeName !== "IndexNotFound") {
-        console.error("Failed to drop legacy uniqueId_1 index", error);
-      }
+      console.error("Failed to check legacy indexes", error);
     }
   })();
 
