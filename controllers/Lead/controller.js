@@ -1339,7 +1339,7 @@ const leadSummary = TryCatch(async (req, res) => {
             {
               $project: {
                 _id: 0,
-                k: "$_id",
+                k: { $ifNull: ["$_id", "No Status"] },
                 v: "$count",
               },
             },
@@ -1363,7 +1363,13 @@ const leadSummary = TryCatch(async (req, res) => {
           totalCount: [{ $group: { _id: null, count: { $sum: 1 } } }],
           statusCount: [
             { $group: { _id: "$status", count: { $sum: 1 } } },
-            { $project: { _id: 0, k: "$_id", v: "$count" } },
+            {
+              $project: {
+                _id: 0,
+                k: { $ifNull: ["$_id", "No Status"] },
+                v: "$count",
+              },
+            },
           ],
         },
       },
