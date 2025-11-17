@@ -67,7 +67,12 @@ const checkAccess = TryCatch(async (req, res, next) => {
     } catch (_) {}
   }
 
-  const trial_routes = ["dashboard", "people", "company", "lead"];
+  const open_routes = ["status"]; // Routes everyone with valid token can hit
+  const trial_routes = ["dashboard", "people", "company", "lead", "status"];
+
+  if (open_routes.includes(route)) {
+    return next();
+  }
 
   // Allow access to trial routes whenever trial is active, regardless of account_type
   if ((req.user?.is_trial && !req.user?.trial_ended) && trial_routes.includes(route)) {
