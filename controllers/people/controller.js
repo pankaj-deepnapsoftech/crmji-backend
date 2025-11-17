@@ -154,9 +154,20 @@ const editPeople = TryCatch(async (req, res) => {
   if (!isExistingPerson) {
     throw new Error("Person not found", 404);
   }
+
+  // Check if person belongs to the same organization
+  if (isExistingPerson.organization.toString() !== req.user.organization.toString()) {
+    throw new Error("You are not allowed to edit this individual", 401);
+  }
+
+  // Allow edit if:
+  // 1. User is Super Admin, OR
+  // 2. User is the creator, OR
+  // 3. User has "people" route access (admin granted access)
   if (
     req.user.role !== "Super Admin" &&
-    isExistingPerson.creator.toString() !== req.user.id.toString()
+    isExistingPerson.creator.toString() !== req.user.id.toString() &&
+    !req.user.allowedroutes?.includes("people")
   ) {
     throw new Error("You are not allowed to edit this individual", 401);
   }
@@ -202,9 +213,19 @@ const deletePeople = TryCatch(async (req, res) => {
     throw new ErrorHandler("Person not found", 404);
   }
 
+  // Check if person belongs to the same organization
+  if (isExistingPeople.organization.toString() !== req.user.organization.toString()) {
+    throw new Error("You are not allowed to delete this individual", 401);
+  }
+
+  // Allow delete if:
+  // 1. User is Super Admin, OR
+  // 2. User is the creator, OR
+  // 3. User has "people" route access (admin granted access)
   if (
     req.user.role !== "Super Admin" &&
-    isExistingPeople.creator.toString() !== req.user.id.toString()
+    isExistingPeople.creator.toString() !== req.user.id.toString() &&
+    !req.user.allowedroutes?.includes("people")
   ) {
     throw new Error("You are not allowed to delete this individual", 401);
   }
@@ -228,9 +249,19 @@ const personDetails = TryCatch(async (req, res) => {
     throw new ErrorHandler("Person doesn't exists", 400);
   }
 
+  // Check if person belongs to the same organization
+  if (person.organization.toString() !== req.user.organization.toString()) {
+    throw new Error("You are not allowed to access this individual", 401);
+  }
+
+  // Allow access if:
+  // 1. User is Super Admin, OR
+  // 2. User is the creator, OR
+  // 3. User has "people" route access (admin granted access)
   if (
     req.user.role !== "Super Admin" &&
-    person.creator.toString() !== req.user.id.toString()
+    person.creator.toString() !== req.user.id.toString() &&
+    !req.user.allowedroutes?.includes("people")
   ) {
     throw new Error("You are not allowed to access this individual", 401);
   }
