@@ -117,7 +117,6 @@ const createLead = TryCatch(async (req, res) => {
             isExistingPeople?.lastname || ""
           } for follow up`,
         });
-
         emitEvent(
           req,
           "NEW_FOLLOWUP_LEAD",
@@ -664,6 +663,27 @@ const editLead = TryCatch(async (req, res) => {
     );
   }
 
+  // Archive the related record when status is set to "Not Interested"
+  if (status === "Not Interested") {
+    try {
+      if (isExistingLead?.people) {
+        await peopleModel.findByIdAndUpdate(
+          isExistingLead.people,
+          { $set: { isArchived: true, status: "Not Interested" } },
+          { new: false }
+        );
+      } else if (isExistingLead?.company) {
+        await companyModel.findByIdAndUpdate(
+          isExistingLead.company,
+          { $set: { isArchived: true, status: "Not Interested" } },
+          { new: false }
+        );
+      }
+    } catch (e) {
+      console.error("Failed to archive on Not Interested:", e?.message || e);
+    }
+  }
+
   if (status === "Completed") {
     let isExistingCustomer;
     if (isExistingLead?.people) {
@@ -977,7 +997,7 @@ const allLeads = TryCatch(async (req, res) => {
   if (req.user.role === "Super Admin") {
     // console.log(req.user.organization);
     leads = await leadModel
-      .find({ organization: req.user.organization })
+      .find({ organization: req.user.organization, status: { $ne: "Not Interested" } })
       .sort({ createdAt: -1 })
       .populate("people", "-_id firstname lastname email phone")
       .populate("company", "-_id companyname email phone")
@@ -985,7 +1005,7 @@ const allLeads = TryCatch(async (req, res) => {
       .populate("creator", "name");
   } else {
     leads = await leadModel
-      .find({ organization: req.user.organization, creator: req.user.id })
+      .find({ organization: req.user.organization, creator: req.user.id, status: { $ne: "Not Interested" } })
       .sort({ createdAt: -1 })
       .populate("people", "-_id firstname lastname email phone")
       .populate("company", "-_id companyname email phone")
@@ -2555,6 +2575,60 @@ const editScheduleDemo = TryCatch(async (req, res) => {
   });
 });
 
+// Bulk move archived entries back to active leads
+const moveToLead = TryCatch(async (req, res) => {
+  const { items = [], peopleIds = [], companyIds = [] } = req.body || {};
+
+  const peopleToProcess = new Set([
+    ...peopleIds,
+    ...items.filter((i) => i?.type === "People").map((i) => i.id),
+  ].filter(Boolean));
+
+  const companiesToProcess = new Set([
+    ...companyIds,
+    ...items.filter((i) => i?.type === "Company").map((i) => i.id),
+  ].filter(Boolean));
+
+  if (peopleToProcess.size) {
+    await peopleModel.updateMany(
+      { _id: { $in: Array.from(peopleToProcess) }, organization: req.user.organization },
+      { $set: { isArchived: false, status: "New" } }
+    );
+
+    await leadModel.updateMany(
+      {
+        organization: req.user.organization,
+        people: { $in: Array.from(peopleToProcess) },
+        status: "Not Interested",
+      },
+      { $set: { status: "New" }, $unset: { followup_date: "", followup_reason: "" } }
+    );
+  }
+
+  if (companiesToProcess.size) {
+    await companyModel.updateMany(
+      { _id: { $in: Array.from(companiesToProcess) }, organization: req.user.organization },
+      { $set: { isArchived: false, status: "New" } }
+    );
+
+    await leadModel.updateMany(
+      {
+        organization: req.user.organization,
+        company: { $in: Array.from(companiesToProcess) },
+        status: "Not Interested",
+      },
+      { $set: { status: "New" }, $unset: { followup_date: "", followup_reason: "" } }
+    );
+  }
+
+  return res.status(200).json({
+    success: true,
+    message: "Selected records moved back to lead successfully",
+    movedPeople: Array.from(peopleToProcess),
+    movedCompanies: Array.from(companiesToProcess),
+  });
+});
+
 const uploadRIFile = TryCatch(async (req, res) => {
   if (!req.file) {
     throw new ErrorHandler("No file uploaded", 400);
@@ -2661,6 +2735,7 @@ module.exports = {
   bulkSms,
   downloadRIFile,
   uploadRIFile,
+  moveToLead,
   addComment,
   getComments,
 };
