@@ -44,6 +44,13 @@ const customerSchema = mongoose.Schema(
       ],
       default: "Deal Done",
     },
+    // When invoice is created, capture dates from invoice
+    saleDate: {
+      type: Date,
+    },
+    deliveryDate: {
+      type: Date,
+    },
     lastPaymentAmount: {
       type: Number,
     },

@@ -14,6 +14,7 @@ const {
   deleteAllLead,
   bulkAssign,
   bulkDownload,
+  moveToLead,
   dataBank,
   scheduleDemo,
   editScheduleDemo,
@@ -99,6 +100,7 @@ router.post("/bulk-upload", upload.single("excel"), bulkUpload);
 router.get("/bulk-download", checkAccess, bulkDownload);
 router.post("/bulk-assign", checkAccess, bulkAssign);
 router.post("/data/bank", checkAccess, dataBank);
+router.post("/move-to-lead", checkAccess, moveToLead);
 router.post(
   "/schedule-demo",
   isAuthenticated,

@@ -243,20 +243,16 @@ const customerDetails = TryCatch(async (req, res) => {
       _id: customer._id,
       customerId: customer.customerId,
       name:
-        customer.people !== undefined
-          ? customer.people?.firstname + " " + (customer.people?.lastname || "")
+        customer.people
+          ? `${customer.people?.firstname || ""} ${customer.people?.lastname || ""}`.trim()
           : customer.company?.companyname,
-      email:
-        customer.people !== undefined
-          ? customer.people?.email
-          : customer.company?.email,
-      phone:
-        customer.people !== undefined
-          ? customer.people?.phone
-          : customer.company?.phone,
+      email: customer.people ? customer.people?.email : customer.company?.email,
+      phone: customer.people ? customer.people?.phone : customer.company?.phone,
       customertype: customer.customertype,
       status: customer.status,
       lastPaymentAmount: customer.lastPaymentAmount,
+      saleDate: customer.saleDate,
+      deliveryDate: customer.deliveryDate,
       products: customer.products,
       creator: customer.creator?.name,
       createdAt: customer.createdAt,
@@ -348,23 +344,16 @@ const allCustomers = TryCatch(async (req, res) => {
     return {
       _id: customer._id,
       uniqueId: customer.customerId,
-      name:
-        customer.people !== undefined
-          ? customer?.people?.firstname +
-            " " +
-            (customer?.people?.lastname || "")
-          : customer.company?.companyname,
-      email:
-        customer.people !== undefined
-          ? customer.people?.email
-          : customer.company?.email,
-      phone:
-        customer.people !== undefined
-          ? customer.people?.phone
-          : customer.company?.phone,
+      name: customer.people
+        ? `${customer?.people?.firstname || ""} ${customer?.people?.lastname || ""}`.trim()
+        : customer.company?.companyname,
+      email: customer.people ? customer.people?.email : customer.company?.email,
+      phone: customer.people ? customer.people?.phone : customer.company?.phone,
       customertype: customer?.customertype,
       status: customer?.status,
       lastPaymentAmount: customer?.lastPaymentAmount,
+      saleDate: customer?.saleDate,
+      deliveryDate: customer?.deliveryDate,
       totalInvoiceAmount: invoiceTotalsByCustomer[customer._id.toString()] || 0,
       creator: customer?.creator.name,
       createdAt: customer?.createdAt,

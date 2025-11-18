@@ -20,13 +20,18 @@ async function insertDefaultLeadStatuses(orgId) {
         "New",
         "Assigned",
         "Follow Up",
-        // "Meeting Scheduled",
+        "Meeting Scheduled",
         // "Meeting Completed",
-        "In Negotiation",
-        "Deal on Hold",
-        "Deal Won",
-        "Deal Lost",
-        "Deal Done",
+        // "In Negotiation",
+        // "Deal on Hold",
+        // "Deal Won",
+        // "Deal Lost",
+        // "Deal Done",
+        "Customer Occupied",
+        "Not Connected",
+        "Call Occupied",
+        "Not Interested",
+
     ];
 
     for (const st of defaultStatuses) {

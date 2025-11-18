@@ -81,9 +81,14 @@ const createInvoice = TryCatch(async (req, res) => {
     balance: total,
   });
 
+  // Update customer with invoice dates and status
   await customerModel.findOneAndUpdate(
     { _id: customer },
-    { status: "Invoice Sent" }
+    {
+      status: "Invoice Sent",
+      saleDate: startdate,
+      deliveryDate: expiredate,
+    }
   );
 
   res.status(200).json({
@@ -141,6 +146,17 @@ const editInvoice = TryCatch(async (req, res) => {
       subtotal,
       total,
       tax,
+    }
+  );
+
+  // Keep customer sale/delivery dates in sync when invoice is edited
+  await customerModel.findOneAndUpdate(
+    { _id: customer },
+    {
+      $set: {
+        saleDate: startdate,
+        deliveryDate: expiredate,
+      },
     }
   );
 
