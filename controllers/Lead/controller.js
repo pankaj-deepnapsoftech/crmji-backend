@@ -770,39 +770,45 @@ const editLead = TryCatch(async (req, res) => {
     email_password &&
     (isExistingLead?.people?.email || isExistingLead?.company?.email)
   ) {
-    const subject = ` Welcome to ${organization?.company}`;
-    const message = `<p>Dear <strong>${
-      isExistingLead?.people?.firstname || isExistingLead?.company?.companyname
-    }</strong>,</p>
+    try {
+      const subject = ` Welcome to ${organization?.company}`;
+      const message = `<p>Dear <strong>${
+        isExistingLead?.people?.firstname || isExistingLead?.company?.companyname
+      }</strong>,</p>
     <br>
     <p>Welcome to ${
       organization?.company
-    }! We’re thrilled to have you on board and are excited to support you on your business journey</p>
+    }! We're thrilled to have you on board and are excited to support you on your business journey</p>
                      <br>
-                     <p>Our team is dedicated to helping you succeed, and we’re here to provide the resources and assistance you need every step of the way. If you have any questions or need guidance, please don’t hesitate to reach out.</p>
+                     <p>Our team is dedicated to helping you succeed, and we're here to provide the resources and assistance you need every step of the way. If you have any questions or need guidance, please don't hesitate to reach out.</p>
                      <br>
-                     <p>Let’s succeed together!</p>
+                     <p>Let's succeed together!</p>
                      <br>
                      <p>Best regards,</p>
                      <p>The ${organization?.company} Team</>`;
 
-    sendBusinessEmail(
-      isExistingLead?.people?.email || isExistingLead?.company?.email,
-      subject,
-      message,
-      email_id,
-      email_password
-    );
+      await sendBusinessEmail(
+        isExistingLead?.people?.email || isExistingLead?.company?.email,
+        subject,
+        message,
+        email_id,
+        email_password
+      );
+    } catch (err) {
+      console.error("Email error (New status):", err);
+      // Don't throw error - allow request to continue even if email fails
+    }
   } else if (
     status === "Completed" &&
     email_id &&
     email_password &&
     (isExistingLead?.people?.email || isExistingLead?.company?.email)
   ) {
-    const subject = `Your Purchase with ITSYBIZZ is Confirmed!`;
-    const message = `<p>Dear <strong>${
-      isExistingLead?.people?.firstname || isExistingLead?.company?.companyname
-    }</strong>,</p>
+    try {
+      const subject = `Your Purchase with ITSYBIZZ is Confirmed!`;
+      const message = `<p>Dear <strong>${
+        isExistingLead?.people?.firstname || isExistingLead?.company?.companyname
+      }</strong>,</p>
     <br>
                      <p>Thank you for completing your purchase of ${
                        isExistingLead?.products[0]?.name
@@ -818,13 +824,17 @@ const editLead = TryCatch(async (req, res) => {
 
                      <p>Warm regards,</p>
                      <p>The ${organization?.company} Team</p>`;
-    sendBusinessEmail(
-      isExistingLead?.people?.email || isExistingLead?.company?.email,
-      subject,
-      message,
-      email_id,
-      email_password
-    );
+      await sendBusinessEmail(
+        isExistingLead?.people?.email || isExistingLead?.company?.email,
+        subject,
+        message,
+        email_id,
+        email_password
+      );
+    } catch (err) {
+      console.error("Email error (Completed status):", err);
+      // Don't throw error - allow request to continue even if email fails
+    }
   }
   // inside editLead, after sending SMS + Email for Completed
   if (
@@ -1577,33 +1587,39 @@ const bulkUpload = async (req, res) => {
           email_password &&
           customer?.email
         ) {
-          const subject = ` Welcome to ${organization?.company}`;
-          const message = `<p>Dear <strong>${customer?.name}</strong>,</p>
+          try {
+            const subject = ` Welcome to ${organization?.company}`;
+            const message = `<p>Dear <strong>${customer?.name}</strong>,</p>
                         <br>
-                        <p>Welcome to ${organization?.company}! We’re thrilled to have you on board and are excited to support you on your business journey</p>
+                        <p>Welcome to ${organization?.company}! We're thrilled to have you on board and are excited to support you on your business journey</p>
                                         <br>
-                                        <p>Our team is dedicated to helping you succeed, and we’re here to provide the resources and assistance you need every step of the way. If you have any questions or need guidance, please don’t hesitate to reach out.</p>
+                                        <p>Our team is dedicated to helping you succeed, and we're here to provide the resources and assistance you need every step of the way. If you have any questions or need guidance, please don't hesitate to reach out.</p>
                                         <br>
-                                        <p>Let’s succeed together!</p>
+                                        <p>Let's succeed together!</p>
                                         <br>
                                         <p>Best regards,</p>
                                         <p>The ${organization?.company} Team</>`;
 
-          sendBusinessEmail(
-            customer?.email,
-            subject,
-            message,
-            email_id,
-            email_password
-          );
+            await sendBusinessEmail(
+              customer?.email,
+              subject,
+              message,
+              email_id,
+              email_password
+            );
+          } catch (err) {
+            console.error("Email error (Customer New status):", err);
+            // Don't throw error - allow request to continue even if email fails
+          }
         } else if (
           customer?.status === "Completed" &&
           email_id &&
           email_password &&
           customer?.email
         ) {
-          const subject = `Your Purchase with ITSYBIZZ is Confirmed!`;
-          const message = `<p>Dear <strong>${customer?.status}</strong>,</p>
+          try {
+            const subject = `Your Purchase with ITSYBIZZ is Confirmed!`;
+            const message = `<p>Dear <strong>${customer?.status}</strong>,</p>
       <br>
                        <p>Thank you for completing your purchase of ${customer?.productname}! We're thrilled to have you with us and are committed to providing you with the best experience.</p>
       <br>
@@ -1616,13 +1632,17 @@ const bulkUpload = async (req, res) => {
                        <p>Warm regards,</p>
                        <p>The ${organization?.company} Team</p>`;
 
-          sendBusinessEmail(
-            customer?.email,
-            subject,
-            message,
-            email_id,
-            email_password
-          );
+            await sendBusinessEmail(
+              customer?.email,
+              subject,
+              message,
+              email_id,
+              email_password
+            );
+          } catch (err) {
+            console.error("Email error (Customer Completed status):", err);
+            // Don't throw error - allow request to continue even if email fails
+          }
         }
 
         customer.phone = undefined;

@@ -35,10 +35,11 @@ async function SendMail(templateName, templateData, reciverData) {
       html: Emailtemplate,
     });
 
-    console.log("send mail");
+    console.log("send mail");    return { success: true };
   } catch (error) {
     console.error("mail not send ", error);
-    throw error; // Re-throw so calling code can handle it
+    // Don't throw error to prevent server crash - just log it
+    return { success: false, error: error.message };
   }
 }
 
@@ -56,9 +57,11 @@ async function SendBulkMail(reciverData) {
     });
 
     console.log("send mail");
+    return { success: true };
   } catch (error) {
     console.error("mail not send ", error);
-    throw error; // Re-throw so calling code can handle it
+    // Don't throw error to prevent server crash - just log it
+    return { success: false, error: error.message };
   }
 }
 
