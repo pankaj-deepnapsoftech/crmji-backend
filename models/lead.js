@@ -89,6 +89,10 @@ const leadSchema = mongoose.Schema(
     location: {
       type: String,
     },
+    tag: {
+      type: String,
+      trim: true,
+    },
     dataBank: {
       type: Boolean,
       default: false,
