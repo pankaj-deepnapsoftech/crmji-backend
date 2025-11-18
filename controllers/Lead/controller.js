@@ -36,6 +36,7 @@ const createLead = TryCatch(async (req, res) => {
     location,
     prc_qt,
     leadCategory,
+    tag,
     demoPdf,
   } = req.body;
   const demoPdfToSave = demoPdf || (req.file ? req.file.path : null);
@@ -81,6 +82,7 @@ const createLead = TryCatch(async (req, res) => {
       prc_qt,
       location,
       leadCategory,
+      tag,
       demoPdf: demoPdfToSave,
     });
     lead = await leadModel.findById(lead._id).populate("products");
@@ -300,6 +302,7 @@ const createLead = TryCatch(async (req, res) => {
       prc_qt,
       location,
       leadCategory,
+      tag,
     });
     lead = await leadModel.findById(lead._id).populate("products");
 
@@ -499,6 +502,7 @@ const editLead = TryCatch(async (req, res) => {
     prc_qt,
     location,
     leadCategory,
+    tag,
   } = req.body;
 
   const isExistingLead = await leadModel
@@ -544,6 +548,7 @@ const editLead = TryCatch(async (req, res) => {
             prc_qt,
             location,
             leadCategory,
+          tag,
           },
         },
         { new: true }
@@ -594,6 +599,7 @@ const editLead = TryCatch(async (req, res) => {
             prc_qt,
             location,
             leadCategory,
+          tag,
           },
         },
         { new: true }
@@ -641,6 +647,7 @@ const editLead = TryCatch(async (req, res) => {
           location,
           leadCategory,
           assigned,
+          tag,
         },
       },
       { new: true }
@@ -989,6 +996,7 @@ const allLeads = TryCatch(async (req, res) => {
       location: lead?.location,
       prc_qt: lead?.prc_qt,
       leadCategory: lead?.leadCategory,
+      tag: lead?.tag,
       dataBank: lead?.dataBank,
       demoPdf: lead?.demoPdf,
       meeting: lead?.meeting,
