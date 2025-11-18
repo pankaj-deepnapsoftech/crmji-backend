@@ -153,29 +153,34 @@ const createLead = TryCatch(async (req, res) => {
 
     // ✅ SEND SMS
     try {
-      if (status === "New" && isExistingPeople?.phone) {
-        const message = `Dear ${isExistingPeople.firstname}, Welcome to Itsybizz! We're thrilled to have you on board and ready to support your business journey. Let's succeed together!`;
-        await sendSms(
-          sms_api_key,
-          sms_api_secret,
-          isExistingPeople.phone,
-          sms_welcome_template_id,
-          sms_sender_id.trim(),
-          sms_entity_id,
-          message
-        );
-      }
-      if (status === "Completed" && isExistingPeople?.phone) {
-        const message = `Hi ${isExistingPeople.firstname}, your purchase of ${lead?.products[0]?.name} is confirmed! Thank you for choosing us. Feel free to reach out at +919205404075.-ITSYBIZZ`;
-        await sendSms(
-          sms_api_key,
-          sms_api_secret,
-          isExistingPeople.phone,
-          sms_dealdone_template_id,
-          sms_sender_id.trim(),
-          sms_entity_id,
-          message
-        );
+      const senderId = typeof sms_sender_id === "string" ? sms_sender_id.trim() : "";
+      if (!senderId) {
+        console.warn("SMS sender ID missing in configuration; skipping SMS send.");
+      } else {
+        if (status === "New" && isExistingPeople?.phone) {
+          const message = `Dear ${isExistingPeople.firstname}, Welcome to Itsybizz! We're thrilled to have you on board and ready to support your business journey. Let's succeed together!`;
+          await sendSms(
+            sms_api_key,
+            sms_api_secret,
+            isExistingPeople.phone,
+            sms_welcome_template_id,
+            senderId,
+            sms_entity_id,
+            message
+          );
+        }
+        if (status === "Completed" && isExistingPeople?.phone) {
+          const message = `Hi ${isExistingPeople.firstname}, your purchase of ${lead?.products[0]?.name} is confirmed! Thank you for choosing us. Feel free to reach out at +919205404075.-ITSYBIZZ`;
+          await sendSms(
+            sms_api_key,
+            sms_api_secret,
+            isExistingPeople.phone,
+            sms_dealdone_template_id,
+            senderId,
+            sms_entity_id,
+            message
+          );
+        }
       }
     } catch (err) {
       console.error("SMS error (people):", err);
@@ -365,29 +370,34 @@ const createLead = TryCatch(async (req, res) => {
 
     // ✅ SEND SMS
     try {
-      if (status === "New" && isExistingCompany?.phone) {
-        const message = `Dear ${isExistingCompany.companyname}, Welcome to Itsybizz! We're thrilled to have you on board and ready to support your business journey. Let's succeed together!`;
-        await sendSms(
-          sms_api_key,
-          sms_api_secret,
-          isExistingCompany.phone,
-          sms_welcome_template_id,
-          sms_sender_id.trim(),
-          sms_entity_id,
-          message
-        );
-      }
-      if (status === "Completed" && isExistingCompany?.phone) {
-        const message = `Hi ${isExistingCompany.companyname}, your purchase of ${lead?.products[0]?.name} is confirmed! Thank you for choosing us. Feel free to reach out at +919205404075.-ITSYBIZZ`;
-        await sendSms(
-          sms_api_key,
-          sms_api_secret,
-          isExistingCompany.phone,
-          sms_dealdone_template_id,
-          sms_sender_id.trim(),
-          sms_entity_id,
-          message
-        );
+      const senderId = typeof sms_sender_id === "string" ? sms_sender_id.trim() : "";
+      if (!senderId) {
+        console.warn("SMS sender ID missing in configuration; skipping SMS send.");
+      } else {
+        if (status === "New" && isExistingCompany?.phone) {
+          const message = `Dear ${isExistingCompany.companyname}, Welcome to Itsybizz! We're thrilled to have you on board and ready to support your business journey. Let's succeed together!`;
+          await sendSms(
+            sms_api_key,
+            sms_api_secret,
+            isExistingCompany.phone,
+            sms_welcome_template_id,
+            senderId,
+            sms_entity_id,
+            message
+          );
+        }
+        if (status === "Completed" && isExistingCompany?.phone) {
+          const message = `Hi ${isExistingCompany.companyname}, your purchase of ${lead?.products[0]?.name} is confirmed! Thank you for choosing us. Feel free to reach out at +919205404075.-ITSYBIZZ`;
+          await sendSms(
+            sms_api_key,
+            sms_api_secret,
+            isExistingCompany.phone,
+            sms_dealdone_template_id,
+            senderId,
+            sms_entity_id,
+            message
+          );
+        }
       }
     } catch (err) {
       console.error("SMS error (company):", err);
