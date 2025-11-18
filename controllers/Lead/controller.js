@@ -502,7 +502,7 @@ const editLead = TryCatch(async (req, res) => {
     prc_qt,
     location,
     leadCategory,
-    tag,
+      tag,
   } = req.body;
 
   const isExistingLead = await leadModel
